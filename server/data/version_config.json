@@ -1,0 +1,11 @@
+{
+    "success": true,
+    "latest_version": "1.0.0",
+    "min_required_version": "1.0.0",
+    "download_url": "https://ghazabegins.id/fotosync/downloads/FotoSync-Setup-Latest.exe",
+    "windows_download_url": "https://ghazabegins.id/fotosync/downloads/FotoSync-Setup-Latest.exe",
+    "mac_download_url": "https://ghazabegins.id/fotosync/downloads/FotoSync-Setup-Latest.dmg",
+    "release_notes": "\u2022 Penambahan sistem kuota 3 tier (Free 20, Premium 500, Pro Unlimited)\r\n\u2022 Integrasi Kontak Admin WhatsApp Official\r\n\u2022 Peningkatan sistem auto-sync & penanganan kuota harian real-time",
+    "is_mandatory": false,
+    "updated_at": "2026-08-30 16:15:22"
+}

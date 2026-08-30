@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FOTOSYNC PRO - Image Auto-Sync Protocol</title>
+  <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" href="assets/logo.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-layout">
+
+    <!-- LEFT SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-logo" style="background: transparent; box-shadow: none;">
+          <img src="assets/logo.png" alt="FotoSync Logo" style="width: 32px; height: 32px; object-fit: contain;">
+        </div>
+        <div class="brand-info">
+          <h2>FotoSync <span class="version-tag">v1.0.0</span></h2>
+          <span class="badge-sub">Image Auto-Sync Protocol</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <!-- FUNGSI UTAMA -->
+        <div class="nav-section-label">FUNGSI UTAMA</div>
+        <button class="nav-item active" data-tab="dashboard">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+          </svg>
+          <span>Upload dan Monitor</span>
+        </button>
+
+        <button class="nav-item" data-tab="history">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 13V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h9"></path>
+            <polyline points="22 17 19 21 16 17"></polyline>
+            <line x1="19" y1="12" x2="19" y2="21"></line>
+          </svg>
+          <span>Riwayat Upload</span>
+        </button>
+
+        <!-- KONFIGURASI -->
+        <div class="nav-section-label">KONFIGURASI</div>
+        <button class="nav-item" data-tab="settings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+          <span>Pengaturan Uploader</span>
+          <span id="navSettingDot" class="status-dot-nav warning"></span>
+        </button>
+
+        <button class="nav-item" data-tab="metadata">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+            <line x1="7" y1="7" x2="7.01" y2="7"></line>
+          </svg>
+          <span>Info Konten & Metadata</span>
+          <span class="status-dot-nav success"></span>
+        </button>
+
+        <!-- UTILITIES -->
+        <div class="nav-section-label">LOGS & DIAGNOSTIK</div>
+        <button class="nav-item" data-tab="logs">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="4 17 10 11 4 5"></polyline>
+            <line x1="12" y1="19" x2="20" y2="19"></line>
+          </svg>
+          <span>Console Logs</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <!-- License Button Pill -->
+        <button id="sidebarUpgradeBtn" class="btn btn-license-pill">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+          <span id="sidebarTierTitle">Lisensi FREE TRIAL</span>
+        </button>
+
+        <div class="sidebar-credit">
+          Developed by <a href="https://ghazabegins.id/" target="_blank" class="dev-link" id="devCreditLink">ghazabegins.id</a>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN WRAPPER -->
+    <main class="main-wrapper">
+      
+      <!-- TOP BAR -->
+      <header class="top-header">
+        <div class="header-left">
+          <h1 id="pageTitle">Upload dan Monitor</h1>
+        </div>
+
+        <div class="header-right">
+          <!-- Update Available Pill Button -->
+          <button id="updateHeaderBtn" class="btn btn-update-pulse hidden" style="margin-right: 8px;">
+            <span class="update-icon">🚀</span>
+            <span>Update <strong id="updateHeaderVer">v1.1.0</strong> Tersedia</span>
+          </button>
+
+          <!-- Session Status Pill -->
+          <div id="statusBadge" class="session-badge stopped">
+            <span class="pulse-dot"></span>
+            <span id="statusText">Sesi Berhenti</span>
+          </div>
+
+          <!-- Login Account & Logout Button Group -->
+          <div class="account-btn-group">
+            <button id="loginModalBtn" class="btn btn-account-pill">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+              <span id="userAccountText">Login Akun Fotoyu</span>
+            </button>
+
+            <button id="logoutBtn" class="btn btn-logout-pill hidden" title="Logout / Ganti Akun">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" y1="12" x2="9" y2="12"></line>
+              </svg>
+              <span>Logout</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+
+      <!-- MEDIA SUB-TABS BAR -->
+      <div class="subtabs-bar">
+        <button class="subtab-btn active">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+            <polyline points="21 15 16 10 5 21"></polyline>
+          </svg>
+          <span>Photo</span>
+          <span id="subtabPhotoStatus" class="subtab-status active">• Berjalan</span>
+        </button>
+
+        <button class="subtab-btn disabled" title="Dukungan Video Segera Hadir">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="23 7 16 12 23 17 23 7"></polygon>
+            <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+          </svg>
+          <span>Video</span>
+          <span class="subtab-status">• Siap</span>
+        </button>
+      </div>
+
+      <!-- MAIN CONTENT CONTENT BODY -->
+      <div class="content-body">
+
+        <!-- TAB 1: DASHBOARD MONITOR OVERVIEW -->
+        <section id="tab-dashboard" class="tab-panel active">
+          
+          <!-- EVENT & ACTION BAR -->
+          <div class="event-title-bar">
+            <div class="event-name-group">
+              <h2 id="eventIdDisplay">Mandiri Jogja Marathon 2026</h2>
+              <span id="eventStatusBadge" class="event-status-badge inactive">• SIAP UPLOAD</span>
+            </div>
+
+            <div class="event-action-btns">
+              <button id="browseDirBtn" class="btn btn-action-outline">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                </svg>
+                <span>Pilih Folder</span>
+              </button>
+
+              <button id="toggleWatcherBtn" class="btn btn-action-primary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                </svg>
+                <span id="watcherBtnText">Start</span>
+              </button>
+
+            </div>
+          </div>
+
+          <!-- TWO-COLUMN DASHBOARD GRID -->
+          <div class="monitor-grid">
+            
+            <!-- LEFT MAIN MONITOR CARD -->
+            <div class="monitor-main-card">
+              
+              <!-- BIG STAT COUNTER HEADER -->
+              <div class="big-counter-header">
+                <div class="big-number-group">
+                  <span id="uploadedCount" class="big-number">0</span>
+                  <span class="total-text">dari <strong id="totalQueueText">0</strong> foto</span>
+                </div>
+                <div id="progressPercent" class="big-percentage">0%</div>
+              </div>
+
+              <!-- SUBTEXT DETAILS -->
+              <div class="counter-subtext">
+                <span id="workerCountText">2 worker aktif</span> · <span id="watchFolderText">Target: Folder Belum Dipilih</span>
+              </div>
+
+              <!-- PROGRESS BAR -->
+              <div class="main-progress-track">
+                <div id="mainProgressBar" class="main-progress-fill" style="width: 0%;"></div>
+              </div>
+
+              <!-- SPEED & ESTIMATE METRICS PILLS ROW -->
+              <div class="metrics-pills-row">
+                <div class="metric-pill">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                  </svg>
+                  <span>Upload <strong id="uploadSpeedText">0 foto/dtk</strong></span>
+                </div>
+
+                <div class="metric-pill">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                    <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                    <polyline points="21 15 16 10 5 21"></polyline>
+                  </svg>
+                  <span>Proses gambar <strong id="processSpeedText">-- foto/dtk</strong></span>
+                </div>
+
+                <div class="metric-pill">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                  </svg>
+                  <span>Estimasi selesai <strong id="etaText">~0 menit</strong></span>
+                </div>
+              </div>
+
+              <!-- COUNTER SUMMARY LINE -->
+              <div class="counter-summary-line">
+                <div class="sum-item">
+                  <span id="queueCount" class="sum-num">0</span>
+                  <span class="sum-label">Antrian</span>
+                </div>
+                <div class="sum-divider"></div>
+                <div class="sum-item">
+                  <span id="successCountDisplay" class="sum-num text-success">0</span>
+                  <span class="sum-label">Sukses</span>
+                </div>
+                <div class="sum-divider"></div>
+                <div class="sum-item">
+                  <span id="failedCount" class="sum-num text-danger">0</span>
+                  <span class="sum-label">Gagal</span>
+                </div>
+                <div class="sum-divider"></div>
+                <div class="sum-item">
+                  <span id="totalHistoryCount" class="sum-num">0</span>
+                  <span class="sum-label">Total History</span>
+                </div>
+              </div>
+
+              <!-- RECENT LIVE PREVIEW THUMBNAILS GRID -->
+              <div class="photo-preview-section">
+                <div class="section-title-sm">Preview Upload Terakhir</div>
+                <div id="livePhotoGrid" class="photo-thumbnails-grid">
+                  <div class="empty-photo-placeholder">
+                    <span>Belum ada foto yang terupload. Jalankan watcher untuk mengunggah foto.</span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- RIGHT SIDEBAR STATUS PANEL -->
+            <div class="monitor-side-panel">
+              
+              <!-- KONDISI JARINGAN -->
+              <div class="side-card">
+                <div class="side-card-header">
+                  <h3>KONDISI JARINGAN</h3>
+                  <button id="testSpeedBtn" class="link-btn">Tes kecepatan</button>
+                </div>
+                <div class="network-status-row">
+                  <div class="net-status-left">
+                    <span id="netStateText" class="net-state">Stabil</span>
+                    <span id="netSpeedText" class="net-speed">48,2 Mbps</span>
+                  </div>
+                  <div id="netSpeedVal" class="net-speed-val">51,0 Mbps</div>
+                </div>
+
+              </div>
+
+              <!-- STATUS LISENSI & QUOTA -->
+              <div class="side-card">
+                <div class="side-card-header">
+                  <h3>STATUS LISENSI PRO</h3>
+                  <span id="sideLicenseBadge" class="badge-pill active">• Aktif</span>
+                </div>
+                <div class="side-info-list">
+                  <div class="side-info-row">
+                    <span class="label">Tipe Member</span>
+                    <span id="sideTierText" class="val bold">FREE TRIAL</span>
+                  </div>
+                  <div class="side-info-row">
+                    <span class="label">Kuota Terpakai Hari Ini</span>
+                    <span id="sideQuotaText" class="val bold">0 / 30 Foto</span>
+                  </div>
+                  <div class="side-info-row">
+                    <span class="label">Batas Reset Harian</span>
+                    <span class="val">Per 24 Jam (00:00)</span>
+                  </div>
+                </div>
+                <button id="upgradeHeaderBtn" class="link-btn-block">Buka Modal Lisensi PRO &rsaquo;</button>
+              </div>
+
+              <!-- KESIAPAN SESI CHECKLIST -->
+              <div class="side-card">
+                <div class="side-card-header">
+                  <h3>KESIAPAN SESI</h3>
+                </div>
+                <div class="checklist-group">
+                  <div class="check-item">
+                    <span class="check-icon">✓</span>
+                    <span class="check-text">Login Akun Fotoyu</span>
+                    <span id="checkLoginStatus" class="check-state ready">Siap</span>
+                  </div>
+                  <div class="check-item">
+                    <span class="check-icon">✓</span>
+                    <span class="check-text">Info Foto & Metadata</span>
+                    <span id="checkMetadataStatus" class="check-state ready">Siap</span>
+                  </div>
+                  <div class="check-item">
+                    <span class="check-icon">✓</span>
+                    <span class="check-text">Pengaturan Uploader</span>
+                    <span id="checkConfigStatus" class="check-state ready">Siap</span>
+                  </div>
+                  <div class="check-item">
+                    <span class="check-icon">✓</span>
+                    <span class="check-text">Folder Sumber Upload</span>
+                    <span id="checkFolderStatus" class="check-state ready">Siap</span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+        </section>
+
+        <!-- TAB 2: PENGATURAN UPLOADER & API -->
+        <section id="tab-settings" class="tab-panel">
+          <div class="form-page-card">
+            <h2>Pengaturan Uploader & Direct API</h2>
+            <form id="settingsForm" class="settings-form grid-form">
+              <div class="form-group full-width">
+                <label for="watchDir">Watch Directory (Folder Target FTP Kamera)</label>
+                <div class="input-with-button">
+                  <input type="text" id="watchDir" placeholder="Pilih folder tempat kamera mengirim foto..." readonly required>
+                  <button type="button" id="browseDirBtnForm" class="btn btn-secondary">Browse...</button>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="apiEndpoint">Fotoyu Upload Endpoint URL</label>
+                <input type="url" id="apiEndpoint" placeholder="https://api.fotoyu.com" required>
+              </div>
+
+              <div class="form-group">
+                <label for="eventId">Fotoyu Event Tag ID (Opsional)</label>
+                <input type="text" id="eventId" placeholder="Contoh: EVT-2026-MARATHON-01">
+              </div>
+
+              <div class="form-group full-width">
+                <div class="label-row">
+                  <label for="authToken">Authorization Token (Bearer Key / JWT)</label>
+                  <button type="button" id="autoGetTokenBtn" class="btn btn-ghost-sm">🔑 Auto Login & Get Token</button>
+                </div>
+                <div class="input-with-icon">
+                  <input type="password" id="authToken" placeholder="Token otomatis terisi setelah login..." required>
+                  <button type="button" id="toggleTokenVisibility" class="icon-toggle-btn">👁️</button>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="concurrency">Parallel Upload Workers</label>
+                <select id="concurrency">
+                  <option value="1">1 Worker (Koneksi Lambat)</option>
+                  <option value="2" selected>2 Workers (Direkomendasikan)</option>
+                  <option value="3">3 Workers (Koneksi Fiber Cepat)</option>
+                  <option value="4">4 Workers (Koneksi Super Cepat)</option>
+                  <option value="6">6 Workers (High Concurrency - PRO)</option>
+                </select>
+              </div>
+
+              <div class="form-actions full-width">
+                <button type="submit" class="btn btn-primary-blue">Simpan Pengaturan Uploader</button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <!-- TAB 3: INFO KONTEN & METADATA -->
+        <section id="tab-metadata" class="tab-panel">
+          <div class="form-page-card">
+            <h2>Info Konten & Presets Metadata Foto</h2>
+            <form id="metadataForm" class="settings-form grid-form">
+              <div class="form-group">
+                <label for="price">Harga Dasar Foto (IDR)</label>
+                <input type="number" id="price" min="0" step="1000" placeholder="0 (Gratis) atau 15000">
+              </div>
+
+              <div class="form-group">
+                <label for="userNicknames">Tag Nickname User (Opsional)</label>
+                <input type="text" id="userNicknames" placeholder="Contoh: fotografer1, studio_x">
+              </div>
+
+              <div class="form-group full-width">
+                <label for="locationName">Nama Lokasi / FotoTree</label>
+                <input type="text" id="locationName" placeholder="lat: 3.583200 lng: 98.627400">
+              </div>
+
+              <div class="form-group">
+                <label for="latitude">Koordinat Latitude (GPS)</label>
+                <input type="number" id="latitude" step="0.000001" placeholder="3.5832">
+              </div>
+
+              <div class="form-group">
+                <label for="longitude">Koordinat Longitude (GPS)</label>
+                <input type="number" id="longitude" step="0.000001" placeholder="98.6274">
+              </div>
+
+              <div class="form-group full-width">
+                <label for="description">Deskripsi Foto (Opsional)</label>
+                <textarea id="description" rows="3" placeholder="Uploaded via FotoSync Pro"></textarea>
+              </div>
+
+              <div class="form-actions full-width">
+                <button type="submit" class="btn btn-primary-blue">Simpan Metadata</button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <!-- TAB 4: CONSOLE LOGS -->
+        <section id="tab-logs" class="tab-panel">
+          <div class="form-page-card">
+            <div class="card-title-row">
+              <h2>Console Activity Log</h2>
+              <button id="clearLogBtn" class="btn btn-secondary-sm">Clear Output</button>
+            </div>
+            <div id="logTerminal" class="log-terminal">
+              <div class="log-line system">
+                <span class="timestamp">[SYSTEM]</span>
+                <span class="msg">FotoSync Protocol Console Initialized.</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- TAB 5: UPLOAD HISTORY -->
+        <section id="tab-history" class="tab-panel">
+          <div class="form-page-card">
+            <div class="card-title-row">
+              <h2>Riwayat Upload & Queue Database</h2>
+              <button id="retryFailedBtnHist" class="btn btn-secondary-sm">🔄 Retry Failed Items</button>
+            </div>
+            <div class="table-wrapper">
+              <table class="queue-table">
+                <thead>
+                  <tr>
+                    <th>Filename</th>
+                    <th>Size</th>
+                    <th>Status</th>
+                    <th>Retries</th>
+                    <th>Timestamp</th>
+                  </tr>
+                </thead>
+                <tbody id="fullQueueTableBody">
+                  <tr class="empty-row">
+                    <td colspan="5">Belum ada riwayat upload.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+
+  </div>
+
+  <!-- UPGRADE TO PRO MODAL DIALOG -->
+  <div id="upgradeModal" class="modal-overlay hidden">
+    <div class="modal-content glass-card large-upgrade">
+      <button id="closeUpgradeModalBtn" class="modal-close-btn">&times;</button>
+      
+      <div class="modal-header text-center">
+        <div class="pro-crown-badge">👑</div>
+        <h2>Pilih Paket Langganan <span class="text-blue">FotoSync PRO</span></h2>
+        <p class="modal-subtitle">Tingkatkan kuota upload harian & kecepatan sync otomatis untuk event fotografi Anda.</p>
+      </div>
+
+      <!-- 3 PLANS COMPARISON GRID -->
+      <div class="plans-comparison-3col">
+        <!-- PAKET 1 HARI -->
+        <div class="plan-box trial-plan">
+          <span class="plan-badge-top free">EXPRESS</span>
+          <h3>PAKET 1 HARI</h3>
+          <p class="plan-price">Rp 25.000 <small>/ 24 jam</small></p>
+          <ul class="plan-features">
+            <li>⏱️ <strong>Masa Aktif 1 Hari</strong></li>
+            <li>🚀 <strong>UNLIMITED Foto</strong></li>
+            <li>⚡ 5 Worker High-Speed Sync</li>
+            <li>🔒 Terikat 1 Komputer / HWID</li>
+          </ul>
+          <a href="https://wa.me/628176498254?text=Halo%20Admin%20FotoSync%20PRO,%20saya%20ingin%20berlangganan%20Paket%201%20HARI%20(Rp%2025.000)" target="_blank" class="btn btn-whatsapp btn-sm" style="margin-top: auto; justify-content: center;">
+            💬 Order 1 Hari
+          </a>
+        </div>
+
+        <!-- PAKET 7 HARI -->
+        <div class="plan-box premium-plan highlighted">
+          <span class="popular-tag">POPULER</span>
+          <h3>PAKET 7 HARI</h3>
+          <p class="plan-price">Rp 50.000 <small>/ 7 hari</small></p>
+          <ul class="plan-features">
+            <li>⏱️ <strong>Masa Aktif 7 Hari</strong></li>
+            <li>🚀 <strong>UNLIMITED Foto</strong></li>
+            <li>⚡ 8 Worker High-Speed Sync</li>
+            <li>🔒 Terikat 1 Komputer / HWID</li>
+          </ul>
+          <a href="https://wa.me/628176498254?text=Halo%20Admin%20FotoSync%20PRO,%20saya%20ingin%20berlangganan%20Paket%207%20HARI%20(Rp%2050.000)" target="_blank" class="btn btn-whatsapp btn-sm" style="margin-top: auto; justify-content: center; background: #0284c7;">
+            💬 Order 7 Hari
+          </a>
+        </div>
+
+        <!-- PAKET 30 HARI -->
+        <div class="plan-box pro-plan super-highlighted">
+          <span class="popular-tag pro-tag">BEST VALUE</span>
+          <h3>PAKET 30 HARI</h3>
+          <p class="plan-price">Rp 110.000 <small>/ 30 hari</small></p>
+          <ul class="plan-features">
+            <li>⏱️ <strong>Masa Aktif 30 Hari</strong></li>
+            <li>🚀 <strong>UNLIMITED Foto</strong></li>
+            <li>⚡ 10 Worker Parallel Sync</li>
+            <li>👑 Prioritas Utama Server</li>
+          </ul>
+          <a href="https://wa.me/628176498254?text=Halo%20Admin%20FotoSync%20PRO,%20saya%20ingin%20berlangganan%20Paket%2030%20HARI%20(Rp%20110.000)" target="_blank" class="btn btn-whatsapp btn-sm" style="margin-top: auto; justify-content: center; background: #2563eb;">
+            💬 Order 30 Hari
+          </a>
+        </div>
+      </div>
+
+      <!-- WHATSAPP ADMIN CONTACT BANNER -->
+      <div class="admin-contact-banner">
+        <div class="contact-info">
+          <span>💬 Ingin berlangganan atau aktivasi lisensi?</span>
+          <small>Hubungi Admin Official via WhatsApp (08176498254) atau Email <a href="mailto:r00t@ghazabegins.id" style="color: #2563eb; text-decoration: underline;">r00t@ghazabegins.id</a></small>
+        </div>
+        <a href="https://wa.me/628176498254?text=Halo%20Admin%20FotoSync%20PRO,%20saya%20ingin%20bertanya%20tentang%20lisensi%20software" target="_blank" class="btn btn-whatsapp">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+          </svg>
+          Chat Admin WhatsApp
+        </a>
+      </div>
+
+      <div class="activation-section">
+        <label for="licenseKeyInput">Masukkan Kunci Lisensi Master (Premium / PRO):</label>
+        <div class="input-with-button">
+          <input type="text" id="licenseKeyInput" placeholder="PREM-FOTOYU-XXXX-YYYY atau PROTJP-FOTOYU-XXXX-YYYY" autocomplete="off">
+          <button id="activateLicenseBtn" class="btn btn-primary-blue">Aktifkan Lisensi</button>
+        </div>
+        <div id="licenseMsgAlert" class="license-alert hidden"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CUSTOM ALERT / CONFIRM WARNING MODAL -->
+  <div id="alertModal" class="modal-overlay hidden">
+    <div class="modal-content glass-card alert-modal-content text-center">
+      <div id="alertModalIcon" class="alert-icon-box warning">
+        <span>⚠️</span>
+      </div>
+      <h2 id="alertModalTitle">Login Diperlukan</h2>
+      <p id="alertModalMessage" class="modal-subtitle">Anda belum login ke akun Fotoyu. Silakan login terlebih dahulu untuk mengaktifkan sesi uploader.</p>
+      
+      <div class="alert-modal-actions">
+        <button id="alertModalCancelBtn" class="btn btn-secondary">Batal</button>
+        <button id="alertModalConfirmBtn" class="btn btn-primary-blue">🔑 Login Sekarang</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- APP AUTO UPDATER MODAL DIALOG -->
+  <div id="updateModal" class="modal-overlay hidden">
+    <div class="modal-content glass-card text-center" style="max-width: 480px;">
+      <button id="closeUpdateModalBtn" class="modal-close-btn">&times;</button>
+      
+      <div class="modal-header text-center">
+        <div class="pro-crown-badge">🚀</div>
+        <h2>Versi Baru <span class="text-blue" id="latestVersionBadge">v1.0.1</span> Tersedia</h2>
+        <p class="modal-subtitle">Versi baru FotoSync PRO telah dirilis dengan peningkatan performa & fitur baru.</p>
+      </div>
+
+      <div class="update-notes-box text-left" style="background: #f8fafc; border: 1px solid var(--border-subtle); padding: 14px; border-radius: 12px; font-size: 12px; color: var(--navy-darker); text-align: left;">
+        <strong style="display: block; margin-bottom: 6px;">Catatan Perubahan (Release Notes):</strong>
+        <div id="updateReleaseNotes" style="white-space: pre-line; line-height: 1.5; color: var(--text-muted);">
+          • Perbaikan sistem kuota harian
+          • Integrasi Kontak Admin WhatsApp
+        </div>
+      </div>
+
+      <!-- PROGRESS CONTAINER -->
+      <div id="updateProgressBox" class="hidden" style="display: flex; flex-direction: column; gap: 6px; text-align: left;">
+        <div style="display: flex; justify-content: space-between; font-size: 11.5px; font-weight: 700;">
+          <span>Mengunduh Pembaruan...</span>
+          <span id="updateProgressPercent">0%</span>
+        </div>
+        <div style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
+          <div id="updateProgressBar" style="width: 0%; height: 100%; background: var(--primary-blue); transition: width 0.2s;"></div>
+        </div>
+      </div>
+
+      <div class="alert-modal-actions" style="margin-top: 8px;">
+        <button id="skipUpdateBtn" class="btn btn-secondary">Nanti Saja</button>
+        <button id="startUpdateBtn" class="btn btn-primary-blue">⚡ Update Sekarang</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="saveToast" class="save-toast hidden">Pengaturan Berhasil Disimpan</div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
+
