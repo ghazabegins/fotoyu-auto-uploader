@@ -5,9 +5,9 @@
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder build",
-    "build:win": "electron-builder build --win",
-    "build:mac": "electron-builder build --mac dmg zip"
+    "build": "electron-builder build --publish never",
+    "build:win": "electron-builder build --win --publish never",
+    "build:mac": "electron-builder build --mac dmg zip --publish never"
   },
   "keywords": [
     "electron",
@@ -31,6 +31,7 @@
     "electron-builder": "^24.13.3"
   },
   "build": {
+    "publish": null,
     "appId": "com.fotoyu.autouploader",
     "productName": "Fotoyu Uploader Pro",
     "directories": {

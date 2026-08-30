@@ -34,10 +34,14 @@ jobs:
 
       - name: Build Windows Installer (.exe)
         if: matrix.os == 'windows-latest'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run build:win
 
       - name: Build macOS Installer (.dmg)
         if: matrix.os == 'macos-latest'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run build:mac
 
       - name: Upload Artifacts
