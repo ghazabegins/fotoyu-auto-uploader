@@ -7,7 +7,7 @@
     "start": "electron .",
     "build": "electron-builder build --publish never",
     "build:win": "electron-builder build --win --publish never",
-    "build:mac": "electron-builder build --mac --publish never"
+    "build:mac": "electron-builder build --mac --arm64 --publish never"
   },
   "keywords": [
     "electron",
@@ -48,20 +48,8 @@
       "gatekeeperAssess": false,
       "identity": null,
       "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        },
-        {
-          "target": "zip",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        }
+        "dmg",
+        "zip"
       ]
     },
     "win": {
