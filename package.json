@@ -44,6 +44,9 @@
     "mac": {
       "category": "public.app-category.photography",
       "icon": "build/icon.png",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "identity": null,
       "target": [
         "dmg",
         "zip"
