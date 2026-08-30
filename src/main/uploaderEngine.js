@@ -570,9 +570,9 @@ class UploaderEngine {
       } catch (err) {
         if (err.response) {
           const status = err.response.status;
-          const msg = err.response.data?.message || JSON.stringify(err.response.data);
-          this.log('ERROR', `Step 3 Registration Error [HTTP ${status}]: ${msg}`);
-          throw new Error(`Step 3 Metadata Failed [HTTP ${status}]: ${msg}`);
+          const detailMsg = err.response.data?.detail ? JSON.stringify(err.response.data.detail) : (err.response.data?.message || JSON.stringify(err.response.data));
+          this.log('ERROR', `Step 3 Registration Error [HTTP ${status}]: ${detailMsg}`);
+          throw new Error(`Step 3 Metadata Failed [HTTP ${status}]: ${detailMsg}`);
         }
         throw err;
       }
