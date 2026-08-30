@@ -556,7 +556,7 @@ class UploaderEngine {
             contents: [
               {
                 title: filename,
-                content: presignedUrl,
+                content: presignedUrl.split('?')[0],
                 height: 1,
                 width: 1,
                 size: fileStats.size,
