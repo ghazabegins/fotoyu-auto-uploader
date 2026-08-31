@@ -420,15 +420,15 @@
             </div>
 
             <!-- INGEST MODE SELECTOR CARDS -->
-            <div class="ingest-modes-grid">
+            <div class="ingest-modes-grid" style="grid-template-columns: 1fr;">
               
-              <!-- MODE 1: KABEL USB DIRECT -->
-              <div class="ingest-mode-card">
+              <!-- MODE 1: KABEL USB DIRECT & MEMORY SD CARD AUTO-DETECT -->
+              <div class="ingest-mode-card" style="grid-column: 1 / -1;">
                 <div class="mode-card-header">
                   <div class="mode-icon-box cable">USB</div>
                   <div class="mode-title-box">
-                    <h3>Metode 1: Kabel USB Direct (MTP / Mass Storage)</h3>
-                    <p>Rekomendasi Utama: Tercepat, Stabil, Tanpa Pengaturan IP</p>
+                    <h3>Ingest Kabel USB Direct & Memory SD Card Auto-Detect</h3>
+                    <p>Rekomendasi Utama: Tercepat, 100% Stabil, Tanpa Pengaturan IP/Jaringan</p>
                   </div>
                   <label class="toggle-switch">
                     <input type="checkbox" id="cableToggle" checked>
@@ -436,90 +436,23 @@
                   </label>
                 </div>
                 <div class="mode-card-body">
-                  <p class="mode-desc">Cukup colok kabel USB-C / Micro-USB kamera ke Laptop. Foto di memori SD Card kamera ter-ingest otomatis.</p>
+                  <p class="mode-desc">Colok kabel USB kamera atau masukkan Kartu Memori SD Card ke Laptop / Mac. Sistem akan otomatis mendeteksi folder DCIM/Kamera dan menampilkan pop-up konfirmasi untuk menaruh foto ke antrian upload secara otomatis.</p>
                   
                   <div class="mode-options-row">
                     <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--navy-darker); font-weight: 600; cursor: pointer;">
                       <input type="checkbox" id="autoDCIMCheck" checked>
-                      <span>Auto-detect folder DCIM kamera saat dicolok</span>
+                      <span>Auto-detect folder DCIM / SD Card kamera saat dicolok</span>
                     </label>
                   </div>
 
                   <div id="cableStatusBox" class="status-box offline">
                     <span class="dot">•</span>
-                    <span id="cableStatusText">Menunggu Kabel USB Kamera Dicolok...</span>
+                    <span id="cableStatusText">Menunggu Kamera atau SD Card Dicolok...</span>
                   </div>
 
                   <button type="button" id="forceScanCableBtn" class="btn btn-secondary-sm" style="margin-top: 6px; width: 100%; padding: 10px; font-weight: 700; border-radius: 10px; border: 1px solid var(--border-subtle, #cbd5e1); background: var(--bg-body, #f1f5f9); color: var(--navy-darker); cursor: pointer;">
-                    Pindai Ulang Kamera Kabel
+                    🔍 Pindai Ulang Kamera / SD Card
                   </button>
-                </div>
-              </div>
-
-              <!-- MODE 2: WIFI WIRELESS INGEST -->
-              <div class="ingest-mode-card">
-                <div class="mode-card-header">
-                  <div class="mode-icon-box wifi">WIFI</div>
-                  <div class="mode-title-box">
-                    <h3>Metode 2: WiFi Wireless Ingest (FTP Push)</h3>
-                    <p>Server Ingest untuk transfer nirkabel dari kamera</p>
-                  </div>
-                  <label class="toggle-switch">
-                    <input type="checkbox" id="wifiToggle">
-                    <span class="slider"></span>
-                  </label>
-                </div>
-
-                <div class="mode-card-body">
-                  <div class="input-inline-group">
-                    <label for="wifiPortInput">Port Server Ingest:</label>
-                    <input type="number" id="wifiPortInput" value="2121" min="1024" max="65535">
-                  </div>
-
-                  <div id="wifiStatusBox" class="status-box offline">
-                    <span class="dot">•</span>
-                    <span id="wifiStatusText">Server WiFi Dihentikan</span>
-                  </div>
-
-                  <div class="ip-display-box">
-                    <div>
-                      <span style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 2px;">Alamat IP Server Ingest Kamera:</span>
-                      <code id="wifiIpDisplay">http://127.0.0.1:2121</code>
-                    </div>
-                    <button type="button" id="copyWifiIpBtn" class="btn btn-ghost-sm" style="padding: 6px 14px; font-size: 12px; font-weight: 700; border-radius: 8px; border: 1px solid #cbd5e1; background: #ffffff; color: var(--navy-darker); cursor: pointer;">Salin IP</button>
-                  </div>
-
-                  <!-- HELPER TIP CARD UNTUK NIKON / WI-FI IP 12-DIGIT -->
-                  <div class="nikon-ip-helper-card" style="margin-top: 12px; background: rgba(37, 99, 235, 0.06); border: 1px solid rgba(37, 99, 235, 0.2); border-radius: 10px; padding: 12px; font-size: 12px; color: var(--text-main);">
-                    <div style="display: flex; align-items: center; gap: 6px; font-weight: 700; color: #2563eb; margin-bottom: 6px;">
-                      <span>💡 Tips Input Server & Port di Kamera Nikon / Sony / Canon:</span>
-                    </div>
-                    <div style="display: flex; flex-direction: column; gap: 4px; line-height: 1.5; color: var(--text-muted);">
-                      <div>• <strong>IP Address (Tanpa Port):</strong> Ketik IP saja di menu Server IP (contoh: <code style="color: #2563eb; font-weight: 700;">192.168.100.049</code>). Jangan ketik titik dua <code>:2121</code> di kolom IP!</div>
-                      <div>• <strong>Port Number:</strong> Di menu kamera ada kolom terpisah bernama <strong>Port / Port Number</strong> (default <code>00021</code>). Ubah nilainya menjadi <code style="color: #2563eb; font-weight: 700;">02121</code> (atau <code style="color: #2563eb; font-weight: 700;">2121</code>).</div>
-                      <div>• <strong>Subnet Mask:</strong> Ketik <code style="color: #2563eb; font-weight: 700;">255.255.255.000</code> (atau pilih <strong>Obtain Automatically / DHCP</strong>).</div>
-                      <div>• <strong>PASV Mode:</strong> Pilih <strong>ON</strong> (Anonymous Login: ON / Bebas).</div>
-                    </div>
-                  </div>
-              <!-- MODE 3: WIRELESS VENDOR APP / FOLDER WATCHER (ALTERNATIF TANPA FTP) -->
-              <div class="ingest-mode-card" style="grid-column: 1 / -1; margin-top: 10px;">
-                <div class="mode-card-header">
-                  <div class="mode-icon-box" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-weight: 800;">APP</div>
-                  <div class="mode-title-box">
-                    <h3>Metode 3: WiFi Alternate (Nikon SnapBridge / Sony Creators' App / Canon EOS Utility)</h3>
-                    <p>Opsi Tergampang: Gunakan aplikasi resmi vendor kamera untuk auto-download ke Folder Laptop ➔ FotoSync Auto-Upload!</p>
-                  </div>
-                </div>
-                <div class="mode-card-body">
-                  <div style="font-size: 13px; color: var(--text-muted); line-height: 1.6;">
-                    <strong>Cara Penggunaan (Tanpa Perlu Setting FTP di Kamera):</strong>
-                    <ol style="margin-top: 6px; margin-left: 18px; display: flex; flex-direction: column; gap: 4px;">
-                      <li>Hubungkan kamera ke Laptop / HP menggunakan aplikasi resmi (<strong>Nikon SnapBridge / WT-7</strong>, <strong>Sony Creators' App</strong>, atau <strong>Canon EOS Utility</strong>).</li>
-                      <li>Atur lokasi folder auto-download pada aplikasi vendor tersebut (misal: <code>C:\Foto_Ingest</code> atau <code>/Users/mac/Pictures/Ingest</code>).</li>
-                      <li>Di <strong>FotoSync PRO</strong> ➔ Buka menu <strong>Pengaturan Uploader</strong> ➔ Pilih folder tersebut sebagai <strong>Watch Directory</strong>!</li>
-                      <li><strong style="color: #10b981;">HASIL:</strong> Setiap Anda foto, aplikasi vendor mengunduh foto ke folder ➔ FotoSync PRO langsung otomatis mengunggah foto ke Fotoyu secara real-time!</li>
-                    </ol>
-                  </div>
                 </div>
               </div>
             </div>
@@ -1191,6 +1124,35 @@
       <!-- RESULTS LIST CONTAINER -->
       <div id="locationSearchResults" style="display: flex; flex-direction: column; gap: 12px; max-height: 420px; overflow-y: auto; padding-right: 4px;">
         <!-- Dynamic Result Cards Rendered Here -->
+      </div>
+    </div>
+  </div>
+
+  <!-- SD CARD / MEMORY DRIVE AUTO-DETECT CONFIRMATION MODAL -->
+  <div id="sdCardDetectModal" class="modal-overlay hidden" style="z-index: 10005;">
+    <div class="modal-content glass-card text-center" style="max-width: 500px; padding: 28px; border-radius: 20px; box-shadow: 0 25px 60px rgba(0,0,0,0.35);">
+      <button id="closeSdCardModalBtn" class="modal-close-btn">&times;</button>
+      
+      <div style="width: 60px; height: 60px; border-radius: 18px; background: rgba(37, 99, 235, 0.1); color: var(--primary-blue); display: flex; align-items: center; justify-content: center; font-size: 32px; margin: 0 auto 16px auto;">
+        💾
+      </div>
+
+      <h2 style="font-size: 19px; font-weight: 800; color: var(--navy-darker); margin-bottom: 6px;">
+        Kamera / Kartu SD Terdeteksi!
+      </h2>
+      <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px; line-height: 1.5;">
+        Perangkat memori terhubung pada:<br/>
+        <code id="sdCardDetectPath" style="font-size: 12px; font-weight: 700; background: var(--bg-card-sub, #f1f5f9); color: var(--primary-blue); padding: 5px 12px; border-radius: 8px; word-break: break-all; margin-top: 6px; display: inline-block; border: 1px solid var(--border-subtle, #cbd5e1);">E:\DCIM\100NIKON</code>
+      </p>
+
+      <div style="background: rgba(37, 99, 235, 0.05); border: 1px solid rgba(37, 99, 235, 0.18); padding: 14px; border-radius: 12px; font-size: 12.5px; color: var(--navy-darker); text-align: left; margin-bottom: 22px; line-height: 1.5;">
+        <strong style="color: var(--primary-blue); font-weight: 700;">Apakah Anda ingin memasukkan foto dari SD Card ini ke antrian upload?</strong><br/>
+        Folder SD Card di atas akan otomatis diset sebagai sumber foto uploader dan foto-foto di dalamnya langsung terisi ke antrian.
+      </div>
+
+      <div class="alert-modal-actions" style="gap: 12px;">
+        <button id="sdCardCancelBtn" class="btn btn-secondary" style="flex: 1; padding: 11px; font-weight: 700; border-radius: 10px;">Abaikan</button>
+        <button id="sdCardConfirmBtn" class="btn btn-primary-blue" style="flex: 1.4; padding: 11px; font-weight: 800; border-radius: 10px;">⚡ Tambahkan ke Antrian</button>
       </div>
     </div>
   </div>

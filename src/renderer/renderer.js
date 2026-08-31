@@ -1561,10 +1561,22 @@ function setupLiveShutterHandlers() {
       });
     }
 
+    // SD Card & Camera Plugged In Confirmation Modal Listener
+    setupSdCardDetectModal();
+
     if (window.electronAPI.onLiveCameraPluggedIn) {
       window.electronAPI.onLiveCameraPluggedIn((plugData) => {
-        showToast(`KAMERA TERHUBUNG! ${plugData.cameraName}. Mengambil foto dari ${plugData.drivePath}...`);
+        pendingPlugDrivePath = plugData.drivePath;
+        const sdCardDetectModal = document.getElementById('sdCardDetectModal');
+        const sdCardDetectPath = document.getElementById('sdCardDetectPath');
         
+        if (sdCardDetectPath) {
+          sdCardDetectPath.textContent = plugData.drivePath;
+        }
+        if (sdCardDetectModal) {
+          sdCardDetectModal.classList.remove('hidden');
+        }
+
         const watchDirInput = document.getElementById('watchDir');
         if (watchDirInput) {
           watchDirInput.value = plugData.drivePath;
@@ -1574,8 +1586,63 @@ function setupLiveShutterHandlers() {
         if (watchDirDisplay) {
           watchDirDisplay.textContent = plugData.drivePath;
         }
+
+        showToast(`💾 SD Card / Kamera Terdeteksi: ${plugData.cameraName}`);
       });
     }
+  }
+}
+
+let pendingPlugDrivePath = null;
+
+function setupSdCardDetectModal() {
+  const sdCardDetectModal = document.getElementById('sdCardDetectModal');
+  const sdCardDetectPath = document.getElementById('sdCardDetectPath');
+  const sdCardConfirmBtn = document.getElementById('sdCardConfirmBtn');
+  const sdCardCancelBtn = document.getElementById('sdCardCancelBtn');
+  const closeSdCardModalBtn = document.getElementById('closeSdCardModalBtn');
+
+  if (closeSdCardModalBtn && sdCardDetectModal) {
+    closeSdCardModalBtn.addEventListener('click', () => {
+      sdCardDetectModal.classList.add('hidden');
+    });
+  }
+
+  if (sdCardCancelBtn && sdCardDetectModal) {
+    sdCardCancelBtn.addEventListener('click', () => {
+      sdCardDetectModal.classList.add('hidden');
+    });
+  }
+
+  if (sdCardConfirmBtn && sdCardDetectModal) {
+    sdCardConfirmBtn.addEventListener('click', async () => {
+      sdCardDetectModal.classList.add('hidden');
+      if (pendingPlugDrivePath) {
+        // Save watchDir to input & store
+        const watchDirInput = document.getElementById('watchDir');
+        if (watchDirInput) watchDirInput.value = pendingPlugDrivePath;
+        
+        const watchDirDisplay = document.getElementById('watchDirDisplay');
+        if (watchDirDisplay) watchDirDisplay.textContent = pendingPlugDrivePath;
+
+        try {
+          const currentSettings = await window.electronAPI.getSettings();
+          currentSettings.watchDir = pendingPlugDrivePath;
+          await window.electronAPI.saveSettings(currentSettings);
+        } catch (e) {}
+
+        showToast(`⚡ Folder SD Card Ditambahkan: ${pendingPlugDrivePath}`);
+
+        // Start watcher if idle
+        try {
+          const status = await window.electronAPI.getStatus();
+          if (status && !status.isWatching) {
+            await window.electronAPI.toggleWatcher(true);
+            await refreshEngineStatus();
+          }
+        } catch (eWatch) {}
+      }
+    });
   }
 }
 
