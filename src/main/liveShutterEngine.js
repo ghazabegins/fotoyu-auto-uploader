@@ -180,6 +180,35 @@ class LiveShutterEngine {
 
                 detectedDrive = subfolder || dcimFoundPath;
                 cameraName = `${brandTag}/DCIM`;
+
+                // Auto Sync New Photos on macOS (Same auto-ingest behavior as Windows MTP)
+                const targetIngestDir = this.store.get('watchDir') || path.join(this.app.getPath('userData'), 'camera_ingest');
+                if (!fs.existsSync(targetIngestDir)) {
+                  fs.mkdirSync(targetIngestDir, { recursive: true });
+                }
+
+                try {
+                  const targetFolderToScan = subfolder || dcimFoundPath;
+                  const photoFiles = fs.readdirSync(targetFolderToScan);
+                  let macCopiedCount = 0;
+
+                  for (const f of photoFiles) {
+                    if (!/\.(jpg|jpeg|png)$/i.test(f) || f.startsWith('.')) continue;
+                    const srcPhotoPath = path.join(targetFolderToScan, f);
+                    const destPhotoPath = path.join(targetIngestDir, f);
+
+                    if (!fs.existsSync(destPhotoPath)) {
+                      fs.copyFileSync(srcPhotoPath, destPhotoPath);
+                      macCopiedCount++;
+                      this.onLiveShutterReceived(destPhotoPath, 'Kabel USB Direct (macOS)', brandTag);
+                    }
+                  }
+
+                  if (macCopiedCount > 0) {
+                    this.log('SUCCESS', `📸 macOS Cable Ingest: Sync ${macCopiedCount} foto baru dari ${brandTag}!`);
+                  }
+                } catch (eMacCopy) {}
+
                 break;
               }
             }
