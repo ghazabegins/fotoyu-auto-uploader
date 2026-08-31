@@ -140,33 +140,63 @@ class LiveShutterEngine {
           }
         }
       } else {
-        // macOS / Linux volume mounts
+        // macOS / Linux volume mounts & USB Camera detection
         const volumesPath = '/Volumes';
         if (fs.existsSync(volumesPath)) {
-          const vols = fs.readdirSync(volumesPath);
-          for (const vol of vols) {
-            if (vol === 'Macintosh HD' || vol.startsWith('.')) continue;
-            const dcimPath = path.join(volumesPath, vol, 'DCIM');
-            if (fs.existsSync(dcimPath)) {
-              let subfolder = null;
-              let brandTag = `Kamera (${vol})`;
+          try {
+            const vols = fs.readdirSync(volumesPath);
+            for (const vol of vols) {
+              if (vol === 'Macintosh HD' || vol === 'Macintosh HD - Data' || vol.startsWith('.')) continue;
+              const fullVolPath = path.join(volumesPath, vol);
+              
+              // Case-insensitive DCIM search & subfolder inspection
+              let dcimFoundPath = null;
               try {
-                const subItems = fs.readdirSync(dcimPath);
-                for (const item of subItems) {
-                  const fullSub = path.join(dcimPath, item);
-                  if (fs.statSync(fullSub).isDirectory() && !item.startsWith('.')) {
-                    subfolder = fullSub;
-                    brandTag = `Kamera ${item} (${vol})`;
-                    break;
-                  }
+                const volItems = fs.readdirSync(fullVolPath);
+                const dcimItem = volItems.find(i => i && i.toUpperCase() === 'DCIM');
+                if (dcimItem) {
+                  dcimFoundPath = path.join(fullVolPath, dcimItem);
                 }
               } catch (e) {}
 
-              detectedDrive = subfolder || dcimPath;
-              cameraName = `${brandTag}/DCIM`;
-              break;
+              if (dcimFoundPath && fs.existsSync(dcimFoundPath)) {
+                let subfolder = null;
+                let brandTag = `Kamera (${vol})`;
+                try {
+                  const subItems = fs.readdirSync(dcimFoundPath);
+                  for (const item of subItems) {
+                    const fullSub = path.join(dcimFoundPath, item);
+                    if (fs.statSync(fullSub).isDirectory() && !item.startsWith('.')) {
+                      subfolder = fullSub;
+                      if (item.includes('NIKON') || item.includes('NCD')) brandTag = `Nikon Camera (${vol})`;
+                      else if (item.includes('CANON') || item.includes('EOS')) brandTag = `Canon Camera (${vol})`;
+                      else if (item.includes('MSDCF') || item.includes('SONY')) brandTag = `Sony Camera (${vol})`;
+                      else if (item.includes('FUJI')) brandTag = `Fujifilm Camera (${vol})`;
+                      else brandTag = `Kamera ${item} (${vol})`;
+                      break;
+                    }
+                  }
+                } catch (e) {}
+
+                detectedDrive = subfolder || dcimFoundPath;
+                cameraName = `${brandTag}/DCIM`;
+                break;
+              }
             }
-          }
+          } catch (errVol) {}
+        }
+
+        // Fallback: Check connected USB Cameras via system_profiler on macOS
+        if (!detectedDrive && process.platform === 'darwin') {
+          try {
+            const { execSync } = require('child_process');
+            const usbInfo = execSync('system_profiler SPUSBDataType 2>/dev/null', { timeout: 3000 }).toString();
+            const cameraMatch = usbInfo.match(/(Nikon|Canon|Sony|Fujifilm|GoPro|Olympus|Panasonic|Lumix|Leica)[^\n]*/i);
+            if (cameraMatch) {
+              const detectedCamModel = cameraMatch[0].trim();
+              this.log('SUCCESS', `🔌 KAMERA TERHUBUNG VIA USB (macOS PTP): "${detectedCamModel}"`);
+            }
+          } catch (eUsb) {}
         }
       }
 

@@ -196,7 +196,7 @@ async function loadInitialSettings() {
 
       // Header & Event Display
       if (watchFolderText) watchFolderText.textContent = `Target: ${settings.watchDir ? settings.watchDir.split(/[\\/]/).pop() : 'Folder Belum Dipilih'}`;
-      if (eventIdDisplay) eventIdDisplay.textContent = settings.locationName || settings.eventId || 'Sudirman Chase plaza';
+      if (eventIdDisplay) eventIdDisplay.textContent = settings.locationName || settings.eventId || 'Umum / Tanpa Event';
 
       // Checklist Status Update
       updateChecklists(settings);
@@ -812,7 +812,7 @@ function setupFormHandlers() {
       }
 
       // Format Metadata Preview Card
-      const eventName = settings.eventId || 'Mandiri Jogja Marathon 2026';
+      const eventName = settings.locationName || settings.eventId || 'Umum / Tanpa Event';
       const folderName = settings.watchDir ? settings.watchDir.split(/[\\/]/).pop() : '-';
       const priceFormatted = settings.price ? `Rp ${Number(settings.price).toLocaleString('id-ID')}` : 'Gratis (Rp 0)';
       const nicknames = settings.userNicknames || 'Belum diisi';
