@@ -1,11 +1,11 @@
 {
     "success": true,
-    "latest_version": "1.0.0",
+    "latest_version": "1.2.0",
     "min_required_version": "1.0.0",
     "download_url": "https://ghazabegins.id/fotosync/downloads/FotoSync-Setup-Latest.exe",
     "windows_download_url": "https://ghazabegins.id/fotosync/downloads/FotoSync-Setup-Latest.exe",
     "mac_download_url": "https://ghazabegins.id/fotosync/downloads/FotoSync-Setup-Latest.dmg",
-    "release_notes": "\u2022 Penambahan sistem kuota 3 tier (Free 20, Premium 500, Pro Unlimited)\r\n\u2022 Integrasi Kontak Admin WhatsApp Official\r\n\u2022 Peningkatan sistem auto-sync & penanganan kuota harian real-time",
+    "release_notes": "• Pembaruan Live Shutter Connect: Auto-detect SD Card & Kabel USB Camera Direct (Windows & macOS)\r\n• Pop-up Modal Konfirmasi Otomatis saat SD Card / Kartu Memori Dicolokkan\r\n• Penyederhanaan Ingest Mode dan Perbaikan Filter IP Jaringan macOS",
     "is_mandatory": false,
-    "updated_at": "2026-08-30 16:15:22"
+    "updated_at": "2026-08-31 20:53:00"
 }

@@ -10,12 +10,12 @@ $defaultMac = 'https://ghazabegins.id/fotosync/downloads/FotoSync-Setup-Latest.d
 
 $versionInfo = [
     'success' => true,
-    'latest_version' => '1.0.0',
+    'latest_version' => '1.2.0',
     'min_required_version' => '1.0.0',
     'download_url' => $defaultWin,
     'windows_download_url' => $defaultWin,
     'mac_download_url' => $defaultMac,
-    'release_notes' => "• Penambahan sistem kuota 3 tier (Free 20, Premium 500, Pro Unlimited)\n• Integrasi Kontak Admin WhatsApp Official\n• Peningkatan sistem auto-sync & penanganan kuota harian real-time",
+    'release_notes' => "• Pembaruan Live Shutter Connect: Auto-detect SD Card & Kabel USB Camera Direct (Windows & macOS)\n• Pop-up Modal Konfirmasi Otomatis saat SD Card / Kartu Memori Dicolokkan\n• Penyederhanaan Ingest Mode dan Perbaikan Filter IP Jaringan macOS",
     'is_mandatory' => false,
     'released_at' => date('Y-m-d')
 ];
