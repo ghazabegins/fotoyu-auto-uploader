@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const Store = require('electron-store');
 const UploaderEngine = require('./uploaderEngine');
 const AutoUpdater = require('./autoUpdater');
+const LiveShutterEngine = require('./liveShutterEngine');
 
 // Helper to generate Unique Device Hardware Fingerprint (HWID)
 function getHardwareID() {
@@ -111,11 +112,17 @@ const store = new Store({
 
     // Photo Metadata Defaults
     price: 0,
+    videoPrice: 0,
     description: 'Uploaded via Fotoyu Auto-Uploader Pro',
     locationName: 'lat: 3.583200 lng: 98.627400',
     latitude: 3.5832,
     longitude: 98.6274,
     userNicknames: '',
+
+    // Application Preferences
+    theme: 'light',
+    language: 'id',
+    autoStartWatcher: false,
 
     // Membership & License Defaults
     licenseTier: 'free',       // 'free', 'premium', or 'pro'
@@ -134,6 +141,7 @@ const store = new Store({
 let mainWindow = null;
 let uploaderEngine = null;
 let autoUpdater = null;
+let liveShutterEngine = null;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -166,6 +174,12 @@ function createWindow() {
   });
 
   uploaderEngine = new UploaderEngine(app, store, (channel, data) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send(channel, data);
+    }
+  });
+
+  liveShutterEngine = new LiveShutterEngine(app, store, uploaderEngine, (channel, data) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send(channel, data);
     }
@@ -210,6 +224,9 @@ app.on('window-all-closed', () => {
   if (uploaderEngine) {
     uploaderEngine.stopWatcher();
   }
+  if (liveShutterEngine) {
+    liveShutterEngine.destroy();
+  }
   if (process.platform !== 'darwin') {
     app.quit();
   }
@@ -238,6 +255,38 @@ ipcMain.handle('settings:save', (event, newSettings) => {
       }
     }
     return { success: true, message: 'Settings saved successfully.' };
+  } catch (err) {
+    return { success: false, message: err.message };
+  }
+});
+
+ipcMain.handle('uploader:clearCompleted', () => {
+  if (uploaderEngine) {
+    return uploaderEngine.clearCompletedQueue();
+  }
+  return { success: false, clearedCount: 0 };
+});
+
+ipcMain.handle('system:sendErrorReport', async (event, reportData) => {
+  try {
+    const logsDir = path.join(app.getPath('userData'), 'logs');
+    if (!fs.existsSync(logsDir)) {
+      fs.mkdirSync(logsDir, { recursive: true });
+    }
+    const reportFileName = `error_report_${Date.now()}.json`;
+    const reportFilePath = path.join(logsDir, reportFileName);
+    
+    const fullReport = {
+      timestamp: new Date().toISOString(),
+      appVersion: app.getVersion(),
+      platform: process.platform,
+      arch: process.arch,
+      nodeVersion: process.version,
+      reportData: reportData || {}
+    };
+
+    fs.writeFileSync(reportFilePath, JSON.stringify(fullReport, null, 2), 'utf8');
+    return { success: true, filePath: reportFilePath, message: 'Laporan error & diagnostik berhasil dibuat.' };
   } catch (err) {
     return { success: false, message: err.message };
   }
@@ -636,4 +685,372 @@ ipcMain.handle('updater:download', async (event, downloadUrl) => {
 ipcMain.handle('updater:install', async () => {
   if (autoUpdater) autoUpdater.installUpdate();
   return { success: true };
+});
+
+// Live Shutter Connect IPC Handlers
+ipcMain.handle('liveShutter:getStatus', async () => {
+  if (liveShutterEngine) return liveShutterEngine.getStatus();
+  return null;
+});
+
+ipcMain.handle('liveShutter:toggleCable', async (event, { enabled, autoDetectDCIM }) => {
+  if (liveShutterEngine) return liveShutterEngine.toggleCableMode(enabled, autoDetectDCIM);
+  return { enabled: false };
+});
+
+ipcMain.handle('liveShutter:forceScanCable', async () => {
+  if (liveShutterEngine) return await liveShutterEngine.forceScanCable();
+  return { enabled: true };
+});
+
+ipcMain.handle('liveShutter:toggleWifi', async (event, { enabled, port }) => {
+  if (liveShutterEngine) return liveShutterEngine.toggleWifiServer(enabled, port);
+  return { success: false };
+});
+
+ipcMain.handle('liveShutter:triggerTestShot', async () => {
+  if (liveShutterEngine) return liveShutterEngine.triggerTestShot();
+  return { success: false };
+});
+
+// Location / Event Search API Handler (Fotoyu App Style)
+const PRESET_LOCATIONS_DATABASE = [
+  {
+    title: 'Sumedang',
+    type: 'place',
+    verified: true,
+    locationName: 'Sumedang',
+    subtitle: 'Sumedang · -6.837120, 107.920890',
+    latitude: -6.837120,
+    longitude: 107.920890,
+    imageUrl: '',
+    eventId: ''
+  },
+  {
+    title: 'Kota Medan',
+    type: 'place',
+    verified: true,
+    locationName: 'Kota Medan',
+    subtitle: 'Kota Medan · 3.589462, 98.674162',
+    latitude: 3.589462,
+    longitude: 98.674162,
+    imageUrl: '',
+    eventId: ''
+  },
+  {
+    title: 'LINTAS MEDAN TARUNA',
+    type: 'event',
+    verified: true,
+    locationName: 'LINTAS MEDAN TARUNA',
+    subtitle: '-7.478369, 110.184321',
+    latitude: -7.478369,
+    longitude: 110.184321,
+    imageUrl: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=160&auto=format&fit=crop&q=80',
+    eventId: 'EVT-MEDAN-TARUNA'
+  },
+  {
+    title: 'Kesawan Medan',
+    type: 'place',
+    verified: true,
+    locationName: 'Kesawan Medan',
+    subtitle: 'Kota Medan · 3.588210, 98.681120',
+    latitude: 3.588210,
+    longitude: 98.681120,
+    imageUrl: 'https://images.unsplash.com/photo-1569154941061-e231b4725ef1?w=160&auto=format&fit=crop&q=80',
+    eventId: ''
+  },
+  {
+    title: 'IBO Loop Medan',
+    type: 'place',
+    verified: true,
+    locationName: 'IBO Loop Medan',
+    subtitle: 'Kota Medan · 3.581230, 98.679890',
+    latitude: 3.581230,
+    longitude: 98.679890,
+    imageUrl: '',
+    eventId: ''
+  },
+  {
+    title: 'Alun Alun Sumedang',
+    type: 'place',
+    verified: true,
+    locationName: 'Alun Alun Sumedang',
+    subtitle: 'Sumedang · -6.859120, 107.921340',
+    latitude: -6.859120,
+    longitude: 107.921340,
+    imageUrl: 'https://images.unsplash.com/photo-1519331379826-f10be5486c6f?w=160&auto=format&fit=crop&q=80',
+    eventId: ''
+  },
+  {
+    title: 'JCO Run 2026',
+    type: 'event',
+    verified: true,
+    locationName: 'ICE BSD, Tangerang',
+    subtitle: 'ICE BSD, Tangerang · -6.301500, 106.638500',
+    latitude: -6.301500,
+    longitude: 106.638500,
+    imageUrl: 'https://images.unsplash.com/photo-1452626038306-9aae5e071dd3?w=160&auto=format&fit=crop&q=80',
+    eventId: 'FT-JCO-RUN-2026'
+  },
+  {
+    title: 'UNESA Medic Run 2026',
+    type: 'event',
+    verified: true,
+    locationName: 'UNESA Kampus Lidah Wetan, Surabaya',
+    subtitle: 'Surabaya · -7.300500, 112.674300',
+    latitude: -7.300500,
+    longitude: 112.674300,
+    imageUrl: 'https://images.unsplash.com/photo-1530541930197-ff16ac917b0e?w=160&auto=format&fit=crop&q=80',
+    eventId: 'FT-UNESA-MEDIC-RUN-2026'
+  },
+  {
+    title: 'Sumatera Space Run 2026',
+    type: 'event',
+    verified: true,
+    locationName: 'Nikmat Rasa Cafe & Resto, Medan',
+    subtitle: 'Medan · 3.585000, 98.675000',
+    latitude: 3.585000,
+    longitude: 98.675000,
+    imageUrl: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=160&auto=format&fit=crop&q=80',
+    eventId: 'FT-SUMATERA-SPACE-RUN-2026'
+  },
+  {
+    title: 'UT Malang Fun Run 2026',
+    type: 'event',
+    verified: true,
+    locationName: 'Stadion Gelora Brantas Batu, Malang',
+    subtitle: 'Malang · -7.871000, 112.528000',
+    latitude: -7.871000,
+    longitude: 112.528000,
+    imageUrl: 'https://images.unsplash.com/photo-1552674605-db6ffd4facb5?w=160&auto=format&fit=crop&q=80',
+    eventId: 'FT-UT-MALANG-FUN-RUN-2026'
+  },
+  {
+    title: 'Mandiri Jogja Marathon 2026',
+    type: 'event',
+    verified: true,
+    locationName: 'Prambanan, Yogyakarta',
+    subtitle: 'Yogyakarta · -7.752021, 110.491467',
+    latitude: -7.752021,
+    longitude: 110.491467,
+    imageUrl: 'https://images.unsplash.com/photo-1513593771513-7b58b6c4af38?w=160&auto=format&fit=crop&q=80',
+    eventId: 'FT-JOGJA-MARATHON-2026'
+  },
+  {
+    title: 'Kota Surabaya',
+    type: 'place',
+    verified: true,
+    locationName: 'Kota Surabaya',
+    subtitle: 'Jawa Timur · -7.257472, 112.752088',
+    latitude: -7.257472,
+    longitude: 112.752088,
+    imageUrl: 'https://images.unsplash.com/photo-1588668214407-6ea9a6d8c272?w=160&auto=format&fit=crop&q=80',
+    eventId: ''
+  },
+  {
+    title: 'Gelora Bung Tomo (GBT) Surabaya',
+    type: 'place',
+    verified: true,
+    locationName: 'Gelora Bung Tomo, Surabaya',
+    subtitle: 'Kota Surabaya · -7.218556, 112.617944',
+    latitude: -7.218556,
+    longitude: 112.617944,
+    imageUrl: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=160&auto=format&fit=crop&q=80',
+    eventId: ''
+  },
+  {
+    title: 'Sudirman Chase plaza',
+    type: 'place',
+    verified: true,
+    locationName: 'Sudirman Chase plaza',
+    subtitle: 'Jakarta Pusat · -6.2095175, 106.82171',
+    latitude: -6.2095175,
+    longitude: 106.82171,
+    imageUrl: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=160&auto=format&fit=crop&q=80',
+    eventId: ''
+  },
+  {
+    title: 'Gelora Bung Karno (GBK)',
+    type: 'place',
+    verified: true,
+    locationName: 'Gelora Bung Karno, Senayan',
+    subtitle: 'Jakarta Pusat · -6.218335, 106.802216',
+    latitude: -6.218335,
+    longitude: 106.802216,
+    imageUrl: 'https://images.unsplash.com/photo-1577223625816-7546f13df25d?w=160&auto=format&fit=crop&q=80',
+    eventId: ''
+  }
+];
+
+ipcMain.handle('location:search', async (event, query) => {
+  const q = (query || '').trim().toLowerCase();
+  const results = [];
+
+  // 1. Try fetching live Fototree events from Fotoyu Official API if user is logged in
+  const authToken = store.get('authToken', '');
+  if (authToken) {
+    try {
+      const axios = require('axios');
+      const authHeader = authToken.startsWith('Bearer ') ? authToken : `Bearer ${authToken}`;
+      const fototreeRes = await axios.get('https://api.fotoyu.com/gs/v3/fototree', {
+        headers: {
+          'Authorization': authHeader,
+          'Accept': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+          'Origin': 'https://www.fotoyu.com',
+          'Referer': 'https://www.fotoyu.com/'
+        },
+        params: { q: q || '' },
+        timeout: 4000
+      });
+
+      const liveItems = fototreeRes.data?.result || fototreeRes.data?.data || fototreeRes.data;
+      if (Array.isArray(liveItems)) {
+        liveItems.forEach(item => {
+          const title = item.name || item.title || item.event_name;
+          if (title && !results.some(r => r.title.toLowerCase() === title.toLowerCase())) {
+            results.push({
+              title: title,
+              type: 'fototree',
+              verified: true,
+              locationName: item.location_name || item.address || title,
+              subtitle: `${item.date || 'Event Active'} | ${item.description || item.location_name || title}`,
+              latitude: parseFloat(item.latitude || item.lat) || -6.2095175,
+              longitude: parseFloat(item.longitude || item.lng || item.lon) || 106.82171,
+              eventId: item.id || item.tag_id || item.event_id || ''
+            });
+          }
+        });
+      }
+    } catch (err) {
+      // Quiet fail to fallback
+    }
+  }
+
+  // 2. Filter Preset Database
+  PRESET_LOCATIONS_DATABASE.forEach(item => {
+    if (!q || item.title.toLowerCase().includes(q) || item.locationName.toLowerCase().includes(q) || item.subtitle.toLowerCase().includes(q)) {
+      if (!results.some(r => r.title.toLowerCase() === item.title.toLowerCase())) {
+        results.push(item);
+      }
+    }
+  });
+
+  // 2. Fetch Multi-Provider Live Geocoding API if query is provided
+  if (q.length >= 2) {
+    const axios = require('axios');
+    let fetchedData = false;
+
+    // Provider A: Photon Komoot Geocoding API (OSM Data, Extremely Fast, No 429 Rate Limits)
+    try {
+      const photonRes = await axios.get(
+        `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=15`,
+        { timeout: 3500 }
+      );
+
+      if (photonRes.data && photonRes.data.features && Array.isArray(photonRes.data.features)) {
+        photonRes.data.features.forEach(feat => {
+          const props = feat.properties || {};
+          const coords = feat.geometry ? feat.geometry.coordinates : [0, 0];
+          const name = props.name || props.street || props.city || q;
+          const city = props.city || props.state || props.country || 'Indonesia';
+          const lng = parseFloat(coords[0]);
+          const lat = parseFloat(coords[1]);
+
+          if (name && lat && lng && !results.some(r => r.title.toLowerCase() === name.toLowerCase())) {
+            results.push({
+              title: name,
+              type: 'place',
+              verified: true,
+              locationName: `${name}, ${city}`,
+              subtitle: `VERIFIED · place · ${city} · ${lat.toFixed(6)}, ${lng.toFixed(6)}`,
+              latitude: lat,
+              longitude: lng,
+              eventId: ''
+            });
+            fetchedData = true;
+          }
+        });
+      }
+    } catch (err) {
+      console.warn('[LOCATION SEARCH] Photon Komoot provider timeout/fail:', err.message);
+    }
+
+    // Provider B: Open-Meteo Geocoding API (Fallback for City/Place Search)
+    if (!fetchedData || results.length < 5) {
+      try {
+        const meteoRes = await axios.get(
+          `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=12&language=id`,
+          { timeout: 3500 }
+        );
+
+        if (meteoRes.data && meteoRes.data.results && Array.isArray(meteoRes.data.results)) {
+          meteoRes.data.results.forEach(item => {
+            const mainTitle = item.name || q;
+            const countryRegion = [item.admin1, item.country].filter(Boolean).join(', ') || mainTitle;
+            const lat = parseFloat(item.latitude);
+            const lng = parseFloat(item.longitude);
+
+            if (!results.some(r => r.title.toLowerCase() === mainTitle.toLowerCase())) {
+              results.push({
+                title: mainTitle,
+                type: 'place',
+                verified: true,
+                locationName: `${mainTitle}, ${countryRegion}`,
+                subtitle: `VERIFIED · place · ${countryRegion} · ${lat.toFixed(6)}, ${lng.toFixed(6)}`,
+                latitude: lat,
+                longitude: lng,
+                eventId: ''
+              });
+            }
+          });
+        }
+      } catch (err) {
+        console.warn('[LOCATION SEARCH] Open-Meteo provider timeout/fail:', err.message);
+      }
+    }
+
+    // Provider C: Nominatim OpenStreetMap API (With Full Browser User-Agent)
+    if (results.length < 3) {
+      try {
+        const geoRes = await axios.get(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&addressdetails=1&limit=10&countrycodes=id`,
+          {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 FotoSyncPro/1.0',
+              'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7'
+            },
+            timeout: 3500
+          }
+        );
+
+        if (geoRes.data && Array.isArray(geoRes.data)) {
+          geoRes.data.forEach(item => {
+            const parts = (item.display_name || '').split(',');
+            const mainTitle = parts[0] ? parts[0].trim() : q;
+            const cityRegion = parts.slice(1, 3).join(',').trim() || mainTitle;
+            const lat = parseFloat(item.lat);
+            const lng = parseFloat(item.lon);
+
+            if (!results.some(r => r.title.toLowerCase() === mainTitle.toLowerCase())) {
+              results.push({
+                title: mainTitle,
+                type: 'place',
+                verified: true,
+                locationName: mainTitle,
+                subtitle: `VERIFIED · place · ${cityRegion} · ${lat.toFixed(6)}, ${lng.toFixed(6)}`,
+                latitude: lat,
+                longitude: lng,
+                eventId: ''
+              });
+            }
+          });
+        }
+      } catch (err) {
+        console.warn('[LOCATION SEARCH] Nominatim OSM provider timeout/fail:', err.message);
+      }
+    }
+  }
+
+  return results;
 });

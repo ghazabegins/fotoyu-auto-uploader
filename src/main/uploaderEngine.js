@@ -233,6 +233,19 @@ class UploaderEngine {
     this.updateUI();
   }
 
+  clearCompletedQueue() {
+    let clearedCount = 0;
+    for (const [filePath, item] of this.queueItemsMap.entries()) {
+      if (item.status === 'uploaded') {
+        this.queueItemsMap.delete(filePath);
+        clearedCount++;
+      }
+    }
+    this.log('INFO', `🧹 Membersihkan ${clearedCount} foto terupload dari tampilan memori antrean.`);
+    this.updateUI();
+    return { success: true, clearedCount };
+  }
+
   onFileDiscovered(filePath) {
     const ext = path.extname(filePath).toLowerCase();
     if (!['.jpg', '.jpeg', '.png', '.webp'].includes(ext)) {
@@ -336,10 +349,25 @@ class UploaderEngine {
         })
         .catch((err) => {
           this.activeUploads--;
-          this.stats.failed++;
-          item.status = 'failed';
-          item.error = err.message;
-          this.log('ERROR', `Failed to upload ${item.filename}: ${err.message}`);
+          const isDup = err.message && (
+            err.message.toLowerCase().includes('duplicate') ||
+            err.message.toLowerCase().includes('reupload') ||
+            err.message.toLowerCase().includes('sudah pernah diunggah') ||
+            err.message.toLowerCase().includes('exist')
+          );
+
+          if (isDup) {
+            item.status = 'skipped';
+            item.error = 'Duplikat (Sudah ada di Fotoyu)';
+            this.uploadedRegistry.add(filePath);
+            this.saveHistory();
+            this.log('WARN', `⏩ Skipping ${item.filename}: Foto sudah pernah diunggah ke Fotoyu.`);
+          } else {
+            this.stats.failed++;
+            item.status = 'failed';
+            item.error = err.message;
+            this.log('ERROR', `Failed to upload ${item.filename}: ${err.message}`);
+          }
           this.updateUI();
           if (this.isWatching) {
             this.processQueue();
@@ -415,8 +443,18 @@ class UploaderEngine {
           }
         }
 
-        if (error.message && (error.message.includes('Token Kedaluwarsa') || error.message.includes('401') || error.message.includes('403') || error.message.includes('cancelled') || error.message.includes('Kuota Trial'))) {
-          throw error; // Immediate fail without looping retries
+        if (error.message && (
+          error.message.includes('Token Kedaluwarsa') ||
+          error.message.includes('401') ||
+          error.message.includes('403') ||
+          error.message.includes('cancelled') ||
+          error.message.includes('Kuota Trial') ||
+          error.message.toLowerCase().includes('duplicate') ||
+          error.message.toLowerCase().includes('reupload') ||
+          error.message.toLowerCase().includes('sudah pernah diunggah') ||
+          error.message.toLowerCase().includes('exist')
+        )) {
+          throw error; // Immediate fail/skip without looping 3x retries
         }
 
         if (attempt > maxRetries) {

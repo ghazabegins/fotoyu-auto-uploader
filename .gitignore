@@ -19,3 +19,7 @@ yarn-error.log*
 .env.local
 .DS_Store
 Thumbs.db
+
+# Test & Local sample ingest folders
+camera_ingest/
+tests/

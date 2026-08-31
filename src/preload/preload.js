@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getSettings: () => ipcRenderer.invoke('settings:get'),
   saveSettings: (settings) => ipcRenderer.invoke('settings:save', settings),
   selectDirectory: () => ipcRenderer.invoke('dialog:selectDirectory'),
+  searchLocations: (query) => ipcRenderer.invoke('location:search', query),
 
   // Auto Login & Token Extractor
   openLoginModal: () => ipcRenderer.invoke('auth:openLoginModal'),
@@ -15,6 +16,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Watcher & Queue Control
   toggleWatcher: (shouldStart) => ipcRenderer.invoke('watcher:toggle', shouldStart),
   retryFailed: () => ipcRenderer.invoke('queue:retryFailed'),
+  clearCompletedQueue: () => ipcRenderer.invoke('uploader:clearCompleted'),
   getStatus: () => ipcRenderer.invoke('status:get'),
   clearHistory: () => ipcRenderer.invoke('history:clear'),
 
@@ -25,6 +27,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Speed Test & Network Diagnostics
   testSpeed: () => ipcRenderer.invoke('net:speedTest'),
+  sendErrorReport: (reportData) => ipcRenderer.invoke('system:sendErrorReport', reportData),
 
   // Auto Updater & App Version Control
   checkForUpdates: () => ipcRenderer.invoke('updater:check'),
@@ -38,6 +41,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // External Link Opener
   openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
+
+  // Live Shutter Connect
+  getLiveShutterStatus: () => ipcRenderer.invoke('liveShutter:getStatus'),
+  toggleCableMode: (options) => ipcRenderer.invoke('liveShutter:toggleCable', options),
+  forceScanCable: () => ipcRenderer.invoke('liveShutter:forceScanCable'),
+  toggleWifiServer: (options) => ipcRenderer.invoke('liveShutter:toggleWifi', options),
+  triggerTestShot: () => ipcRenderer.invoke('liveShutter:triggerTestShot'),
+  onLiveShutterStatusUpdate: (callback) => ipcRenderer.on('live-shutter:statusUpdate', (event, data) => callback(data)),
+  onLiveShotCaptured: (callback) => ipcRenderer.on('live-shutter:shotCaptured', (event, data) => callback(data)),
+  onLiveCameraPluggedIn: (callback) => ipcRenderer.on('live-shutter:cameraPluggedIn', (event, data) => callback(data)),
 
   // Event Push Listeners
   onStatusUpdate: (callback) => ipcRenderer.on('status:update', (event, data) => callback(data)),

@@ -38,6 +38,15 @@
           <span>Upload dan Monitor</span>
         </button>
 
+        <button class="nav-item" data-tab="live-shutter">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+            <circle cx="12" cy="13" r="4"></circle>
+          </svg>
+          <span>Live Shutter Connect</span>
+          <span id="navLiveShutterDot" class="status-dot-nav success"></span>
+        </button>
+
         <button class="nav-item" data-tab="history">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M22 13V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h9"></path>
@@ -47,12 +56,11 @@
           <span>Riwayat Upload</span>
         </button>
 
-        <!-- KONFIGURASI -->
-        <div class="nav-section-label">KONFIGURASI</div>
+        <!-- KONFIGURASI EVENT -->
+        <div class="nav-section-label">KONFIGURASI EVENT</div>
         <button class="nav-item" data-tab="settings">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="3"></circle>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
           </svg>
           <span>Pengaturan Uploader</span>
           <span id="navSettingDot" class="status-dot-nav warning"></span>
@@ -67,8 +75,16 @@
           <span class="status-dot-nav success"></span>
         </button>
 
-        <!-- UTILITIES -->
-        <div class="nav-section-label">LOGS & DIAGNOSTIK</div>
+        <!-- SISTEM & PENGATURAN -->
+        <div class="nav-section-label">SISTEM & PENGATURAN</div>
+        <button class="nav-item" data-tab="app-settings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+          <span>Pengaturan Aplikasi</span>
+        </button>
+
         <button class="nav-item" data-tab="logs">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="4 17 10 11 4 5"></polyline>
@@ -76,11 +92,22 @@
           </svg>
           <span>Console Logs</span>
         </button>
+
+        <!-- BANTUAN & PANDUAN -->
+        <div class="nav-section-label">BANTUAN & PANDUAN</div>
+        <button class="nav-item" data-tab="help">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+          <span>Petunjuk & Bantuan</span>
+        </button>
       </nav>
 
       <div class="sidebar-footer">
         <!-- License Button Pill -->
-        <button id="sidebarUpgradeBtn" class="btn btn-license-pill">
+        <button id="sidebarUpgradeBtn" class="btn btn-license-pill" onclick="window.openLicenseModal && window.openLicenseModal()">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
             <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
@@ -106,7 +133,6 @@
         <div class="header-right">
           <!-- Update Available Pill Button -->
           <button id="updateHeaderBtn" class="btn btn-update-pulse hidden" style="margin-right: 8px;">
-            <span class="update-icon">🚀</span>
             <span>Update <strong id="updateHeaderVer">v1.1.0</strong> Tersedia</span>
           </button>
 
@@ -318,7 +344,7 @@
                     <span class="val">Per 24 Jam (00:00)</span>
                   </div>
                 </div>
-                <button id="upgradeHeaderBtn" class="link-btn-block">Buka Modal Lisensi PRO &rsaquo;</button>
+                <button id="upgradeHeaderBtn" class="link-btn-block" onclick="window.openLicenseModal && window.openLicenseModal()">Buka Modal Lisensi PRO &rsaquo;</button>
               </div>
 
               <!-- KESIAPAN SESI CHECKLIST -->
@@ -356,95 +382,425 @@
 
         </section>
 
+        <!-- TAB: LIVE SHUTTER CONNECT -->
+        <section id="tab-live-shutter" class="tab-panel">
+          <div class="live-shutter-container">
+            
+            <!-- LIVE TELEMETRY HEADER BANNER -->
+            <div class="live-header-banner">
+              <div class="live-banner-left">
+                <div class="live-camera-icon">LIVE</div>
+                <div class="live-camera-info">
+                  <h3>Ingest Shutter Live Kamera (Real-Time)</h3>
+                  <p>Hubungkan kamera melalui kabel USB (MTP) atau WiFi (FTP Server) untuk auto-upload foto setiap jepretan.</p>
+                </div>
+              </div>
+
+              <div class="live-camera-actions">
+                <button type="button" id="toggleShutterSoundBtn" class="btn btn-ghost-sm">
+                  <span id="soundIcon"></span>
+                  <span id="soundText">Suara Shutter: ON</span>
+                </button>
+                <button type="button" id="triggerTestShotBtn" class="btn btn-ghost-sm">
+                  <span>Tes Shutter Live</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- LIVE SHOT RECENT POPUP BANNER -->
+            <div id="liveShotFlashBanner" class="live-shot-flash hidden" style="cursor: pointer;">
+              <div class="flash-thumb-box" style="width: 48px; height: 48px; border-radius: 8px; overflow: hidden; background: #000; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.3);">
+                <img id="flashShotImg" src="" alt="Thumbnail" style="width: 100%; height: 100%; object-fit: cover;" />
+              </div>
+              <div class="flash-info">
+                <strong id="flashShotTitle">LIVE SHOT RECEIVED!</strong>
+                <span id="flashShotDetail">Foto diteruskan otomatis ke Uploader Queue</span>
+              </div>
+              <div class="flash-badge" id="flashShotSource">USB Cable</div>
+            </div>
+
+            <!-- INGEST MODE SELECTOR CARDS -->
+            <div class="ingest-modes-grid">
+              
+              <!-- MODE 1: KABEL USB DIRECT -->
+              <div class="ingest-mode-card">
+                <div class="mode-card-header">
+                  <div class="mode-icon-box cable">USB</div>
+                  <div class="mode-title-box">
+                    <h3>Metode 1: Kabel USB Direct (MTP / Mass Storage)</h3>
+                    <p>Rekomendasi Utama: Tercepat, Stabil, Tanpa Pengaturan IP</p>
+                  </div>
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="cableToggle" checked>
+                    <span class="slider"></span>
+                  </label>
+                </div>
+                <div class="mode-card-body">
+                  <p class="mode-desc">Cukup colok kabel USB-C / Micro-USB kamera ke Laptop. Foto di memori SD Card kamera ter-ingest otomatis.</p>
+                  
+                  <div class="mode-options-row">
+                    <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--navy-darker); font-weight: 600; cursor: pointer;">
+                      <input type="checkbox" id="autoDCIMCheck" checked>
+                      <span>Auto-detect folder DCIM kamera saat dicolok</span>
+                    </label>
+                  </div>
+
+                  <div id="cableStatusBox" class="status-box offline">
+                    <span class="dot">•</span>
+                    <span id="cableStatusText">Menunggu Kabel USB Kamera Dicolok...</span>
+                  </div>
+
+                  <button type="button" id="forceScanCableBtn" class="btn btn-secondary-sm" style="margin-top: 6px; width: 100%; padding: 10px; font-weight: 700; border-radius: 10px; border: 1px solid var(--border-subtle, #cbd5e1); background: var(--bg-body, #f1f5f9); color: var(--navy-darker); cursor: pointer;">
+                    Pindai Ulang Kamera Kabel
+                  </button>
+                </div>
+              </div>
+
+              <!-- MODE 2: WIFI WIRELESS INGEST -->
+              <div class="ingest-mode-card">
+                <div class="mode-card-header">
+                  <div class="mode-icon-box wifi">WIFI</div>
+                  <div class="mode-title-box">
+                    <h3>Metode 2: WiFi Wireless Ingest (FTP Push)</h3>
+                    <p>Server Ingest untuk transfer nirkabel dari kamera</p>
+                  </div>
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="wifiToggle">
+                    <span class="slider"></span>
+                  </label>
+                </div>
+
+                <div class="mode-card-body">
+                  <div class="input-inline-group">
+                    <label for="wifiPortInput">Port Server Ingest:</label>
+                    <input type="number" id="wifiPortInput" value="2121" min="1024" max="65535">
+                  </div>
+
+                  <div id="wifiStatusBox" class="status-box offline">
+                    <span class="dot">•</span>
+                    <span id="wifiStatusText">Server WiFi Dihentikan</span>
+                  </div>
+
+                  <div class="ip-display-box">
+                    <div>
+                      <span style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 2px;">Alamat IP Server Ingest Kamera:</span>
+                      <code id="wifiIpDisplay">http://127.0.0.1:2121</code>
+                    </div>
+                    <button type="button" id="copyWifiIpBtn" class="btn btn-ghost-sm" style="padding: 6px 14px; font-size: 12px; font-weight: 700; border-radius: 8px; border: 1px solid #cbd5e1; background: #ffffff; color: var(--navy-darker); cursor: pointer;">Salin IP</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- CAMERA CONNECTION GUIDE (PANDUAN LENGKAP MERK KAMERA) -->
+            <div class="form-page-card camera-guide-card" style="margin-top: 20px;">
+              <div class="card-title-row" style="cursor: pointer;" id="toggleGuideHeader">
+                <h2>Panduan Cara Menghubungkan Kamera (Canon, Sony, Nikon, Fujifilm)</h2>
+                <button type="button" id="toggleGuideBtn" class="btn btn-ghost-sm">▼ Buka Panduan</button>
+              </div>
+
+              <div id="cameraGuideContent" class="guide-content hidden" style="margin-top: 15px;">
+                
+                <!-- BRAND SELECTOR TABS -->
+                <div class="guide-brand-pills">
+                  <button type="button" class="brand-pill active" data-brand="all">Semua Merk</button>
+                  <button type="button" class="brand-pill" data-brand="nikon">Nikon</button>
+                  <button type="button" class="brand-pill" data-brand="sony">Sony</button>
+                  <button type="button" class="brand-pill" data-brand="canon">Canon</button>
+                  <button type="button" class="brand-pill" data-brand="fuji">Fujifilm</button>
+                </div>
+
+                <!-- GUIDE SECTIONS GRID -->
+                <div class="guide-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin-top: 15px;">
+                  
+                  <!-- METODE KABEL USB -->
+                  <div class="guide-box cable-guide">
+                    <div class="guide-box-header">
+                      <h3>Koneksi Kabel USB Direct / MTP</h3>
+                    </div>
+                    <ol class="guide-steps">
+                      <li>Colok kabel <strong>USB-C / Micro-USB / Mini-USB</strong> dari kamera langsung ke port USB laptop Anda.</li>
+                      <li>Nyalakan Kamera, lalu atur menu koneksi USB sesuai brand kamera Anda:
+                        <ul class="brand-instruction-list">
+                          <li class="brand-item nikon"><strong>Nikon Z / DSLR:</strong> Menu USB Connection ➔ Pilih <code>MTP/PTP</code> atau <code>Mass Storage</code>.</li>
+                          <li class="brand-item sony"><strong>Sony Alpha:</strong> Menu Setup ➔ USB Connection ➔ Pilih <code>Mass Storage</code> atau <code>Auto / MTP</code>.</li>
+                          <li class="brand-item canon"><strong>Canon EOS R / DSLR:</strong> Menu Connection / USB ➔ Pilih <code>Photo Import / MTP</code>.</li>
+                          <li class="brand-item fuji"><strong>Fujifilm X / GFX:</strong> Menu Connection Setting ➔ <i>PC Auto Save / USB Card Reader</i>.</li>
+                        </ul>
+                      </li>
+                      <li>Aplikasi akan otomatis memproses notifikasi <strong>KAMERA TERHUBUNG!</strong> Foto di memori kamera langsung terbaca & diunggah otomatis.</li>
+                    </ol>
+                  </div>
+
+                  <!-- METODE WIFI WIRELESS -->
+                  <div class="guide-box wifi-guide">
+                    <div class="guide-box-header">
+                      <h3>Koneksi WiFi Wireless Ingest (FTP Push)</h3>
+                    </div>
+                    <ol class="guide-steps">
+                      <li>Pastikan Laptop dan Kamera terhubung ke <strong>Jaringan WiFi / Mobile Hotspot yang sama</strong>.</li>
+                      <li>Aktifkan sakelar <strong>Server WiFi</strong> di atas, lalu klik <strong>Salin IP</strong> (misal: <code>http://192.168.1.100:2121</code>).</li>
+                      <li>Masuk ke Menu Setting Kamera & Input Alamat IP Server:
+                        <ul class="brand-instruction-list">
+                          <li class="brand-item nikon"><strong>Nikon (WT / WiFi):</strong> Menu Connect to FTP Server ➔ Enter Server IP & Port <code>2121</code>.</li>
+                          <li class="brand-item sony"><strong>Sony (FTP Push):</strong> Menu FTP Transfer Functions ➔ Server Setting ➔ Host Name (IP) & Port <code>2121</code>.</li>
+                          <li class="brand-item canon"><strong>Canon (EOS / WFT):</strong> Menu Network Settings ➔ FTP Transfer ➔ Address (IP) & Port <code>2121</code>.</li>
+                          <li class="brand-item fuji"><strong>Fujifilm (FTP Transfer):</strong> Menu Connection Setting ➔ FTP Transfer Setup ➔ Address (IP) & Port <code>2121</code>.</li>
+                        </ul>
+                      </li>
+                      <li>Setiap jepretan foto baru akan terkirim secara wireless nirkabel dari kamera ke laptop Anda secara real-time.</li>
+                    </ol>
+                  </div>
+
+                </div>
+
+              </div>
+            </div>
+
+            <!-- LIVE STREAM ACTIVITY LOG FEED -->
+            <div class="form-page-card live-stream-card" style="margin-top: 20px;">
+              <div class="card-title-row">
+                <h2>Activity Feed Live Shutter</h2>
+                <div class="total-shots-badge">
+                  Total Live Shot: <strong id="totalLiveShotsText">0</strong>
+                </div>
+              </div>
+
+              <div id="liveStreamFeed" class="live-stream-feed">
+                <div class="feed-empty-msg">
+                  <span>Siap menerima shutter live. Colok kabel USB (Mass Storage & MTP) atau aktifkan server WiFi Ingest.</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
         <!-- TAB 2: PENGATURAN UPLOADER & API -->
         <section id="tab-settings" class="tab-panel">
-          <div class="form-page-card">
-            <h2>Pengaturan Uploader & Direct API</h2>
-            <form id="settingsForm" class="settings-form grid-form">
-              <div class="form-group full-width">
-                <label for="watchDir">Watch Directory (Folder Target FTP Kamera)</label>
-                <div class="input-with-button">
-                  <input type="text" id="watchDir" placeholder="Pilih folder tempat kamera mengirim foto..." readonly required>
-                  <button type="button" id="browseDirBtnForm" class="btn btn-secondary">Browse...</button>
+          <div class="form-page-card" style="max-width: 800px; padding: 28px; border-radius: 20px;">
+            <div style="margin-bottom: 20px;">
+              <h2 style="font-size: 20px; font-weight: 800; color: var(--navy-darker); margin: 0 0 6px 0;">Pengaturan Uploader Foto</h2>
+              <p style="font-size: 13px; color: var(--text-muted); margin: 0;">Konfigurasikan folder target foto dan kecepatan pengunggahan otomatis.</p>
+            </div>
+
+            <form id="settingsForm" class="settings-form" style="display: flex; flex-direction: column; gap: 20px;">
+              
+              <!-- SECTION 1: FOLDER TARGET -->
+              <div style="background: #f8fafc; border: 1px solid var(--border-subtle); border-radius: 14px; padding: 18px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                  <label for="watchDir" style="font-size: 13.5px; font-weight: 800; color: var(--navy-darker); margin: 0; display: flex; align-items: center; gap: 8px;">
+                    📁 Folder Foto Pemantauan (Target Ingest)
+                  </label>
+                </div>
+                <p style="font-size: 12px; color: var(--text-muted); margin: 0 0 12px 0;">Pilih folder di mana foto masuk secara otomatis dari Kamera / USB / Server Wi-Fi.</p>
+                <div class="input-with-button" style="display: flex; gap: 10px;">
+                  <input type="text" id="watchDir" placeholder="Belum ada folder yang dipilih..." readonly required style="flex: 1; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--border-subtle); font-size: 13px; font-weight: 600; background: #ffffff; color: var(--navy-darker);">
+                  <button type="button" id="browseDirBtnForm" class="btn btn-secondary" style="padding: 10px 18px; font-weight: 700; border-radius: 10px; font-size: 13px;">Pilih Folder Foto...</button>
                 </div>
               </div>
 
-              <div class="form-group">
-                <label for="apiEndpoint">Fotoyu Upload Endpoint URL</label>
-                <input type="url" id="apiEndpoint" placeholder="https://api.fotoyu.com" required>
-              </div>
-
-              <div class="form-group">
-                <label for="eventId">Fotoyu Event Tag ID (Opsional)</label>
-                <input type="text" id="eventId" placeholder="Contoh: EVT-2026-MARATHON-01">
-              </div>
-
-              <div class="form-group full-width">
-                <div class="label-row">
-                  <label for="authToken">Authorization Token (Bearer Key / JWT)</label>
-                  <button type="button" id="autoGetTokenBtn" class="btn btn-ghost-sm">🔑 Auto Login & Get Token</button>
+              <!-- SECTION 2: STATUS AKUN & LOGIN -->
+              <div style="background: #f8fafc; border: 1px solid var(--border-subtle); border-radius: 14px; padding: 18px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                  <label style="font-size: 13.5px; font-weight: 800; color: var(--navy-darker); margin: 0; display: flex; align-items: center; gap: 8px;">
+                    👤 Status Akun & Akses Fotoyu
+                  </label>
                 </div>
-                <div class="input-with-icon">
-                  <input type="password" id="authToken" placeholder="Token otomatis terisi setelah login..." required>
-                  <button type="button" id="toggleTokenVisibility" class="icon-toggle-btn">👁️</button>
+                <p style="font-size: 12px; color: var(--text-muted); margin: 0 0 12px 0;">Otentikasi otomatis untuk mengizinkan aplikasi mengunggah foto ke sistem Fotoyu.</p>
+                
+                <div style="display: flex; align-items: center; justify-content: space-between; background: #ffffff; border: 1px solid var(--border-subtle); border-radius: 10px; padding: 12px 16px; flex-wrap: wrap; gap: 10px;">
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 10px; height: 10px; border-radius: 50%; background: #10b981;" id="settingsLoginStatusDot"></div>
+                    <span style="font-size: 13px; font-weight: 700; color: var(--navy-darker);" id="settingsAccountName">Terhubung ke Akun Fotoyu</span>
+                  </div>
+                  <button type="button" id="autoGetTokenBtn" class="btn btn-primary-blue" style="padding: 8px 16px; font-size: 12.5px; font-weight: 700; border-radius: 8px;">⚡ Sync / Login Akun Fotoyu</button>
                 </div>
               </div>
 
-              <div class="form-group">
-                <label for="concurrency">Parallel Upload Workers</label>
-                <select id="concurrency">
-                  <option value="1">1 Worker (Koneksi Lambat)</option>
-                  <option value="2" selected>2 Workers (Direkomendasikan)</option>
-                  <option value="3">3 Workers (Koneksi Fiber Cepat)</option>
-                  <option value="4">4 Workers (Koneksi Super Cepat)</option>
-                  <option value="6">6 Workers (High Concurrency - PRO)</option>
+              <!-- SECTION 3: KECEPATAN UNGGAH -->
+              <div style="background: #f8fafc; border: 1px solid var(--border-subtle); border-radius: 14px; padding: 18px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                  <label for="concurrency" style="font-size: 13.5px; font-weight: 800; color: var(--navy-darker); margin: 0; display: flex; align-items: center; gap: 8px;">
+                    🚀 Kecepatan Pengiriman Foto (Simultan Worker)
+                  </label>
+                </div>
+                <p style="font-size: 12px; color: var(--text-muted); margin: 0 0 12px 0;">Pilih mode kecepatan sesuai kualitas jaringan internet di lokasi event Anda.</p>
+                <select id="concurrency" style="width: 100%; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--border-subtle); font-size: 13px; font-weight: 700; background: #ffffff; color: var(--navy-darker);">
+                  <option value="1">🐢 Lambat (1 Foto Simultan) — Direkomendasikan untuk koneksi lemah</option>
+                  <option value="2" selected>⚡ Standar (2 Foto Simultan) — Direkomendasikan untuk Hotspot & Wi-Fi biasa</option>
+                  <option value="3">🚀 Cepat (3 Foto Simultan) — Cocok untuk Wi-Fi Event yang Stabil</option>
+                  <option value="4">⚡ Ultra (4 Foto Simultan) — Cocok untuk jaringan Wi-Fi Fiber Cepat</option>
+                  <option value="6">🔥 High Concurrency (6 Workers) — Performa Maksimal PRO (Jaringan LAN / High-Speed)</option>
                 </select>
               </div>
 
-              <div class="form-actions full-width">
-                <button type="submit" class="btn btn-primary-blue">Simpan Pengaturan Uploader</button>
+              <!-- SECTION 4: ADVANCED DEVELOPER COLLAPSIBLE ACCORDION -->
+              <div style="margin-top: 6px;">
+                <button type="button" id="toggleAdvancedSettingsBtn" onclick="const el=document.getElementById('advancedSettingsContent'); const arrow=document.getElementById('advArrow'); if(el.classList.contains('hidden')){el.classList.remove('hidden'); arrow.textContent='▲';}else{el.classList.add('hidden'); arrow.textContent='▼';}" style="width: 100%; background: none; border: none; padding: 10px 0; text-align: left; font-size: 13px; font-weight: 700; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: space-between; border-top: 1px dashed var(--border-subtle);">
+                  <span>⚙️ Pengaturan Lanjutan (Advanced API & Debugging)</span>
+                  <span id="advArrow" style="font-size: 11px;">▼</span>
+                </button>
+
+                <div id="advancedSettingsContent" class="hidden" style="background: #f1f5f9; border: 1px solid var(--border-subtle); border-radius: 14px; padding: 18px; margin-top: 8px; display: flex; flex-direction: column; gap: 14px;">
+                  <div>
+                    <label for="apiEndpoint" style="font-size: 12px; font-weight: 700; color: var(--navy-darker); display: block; margin-bottom: 6px;">Fotoyu Upload Endpoint URL</label>
+                    <input type="url" id="apiEndpoint" placeholder="https://api.fotoyu.com" required style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-subtle); font-size: 12.5px; background: #ffffff;">
+                  </div>
+
+                  <div>
+                    <label for="authToken" style="font-size: 12px; font-weight: 700; color: var(--navy-darker); display: block; margin-bottom: 6px;">Token Otentikasi Manual (JWT Bearer Token)</label>
+                    <input type="password" id="authToken" placeholder="Bearer Token login akun Fotoyu Anda..." style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-subtle); font-size: 12.5px; background: #ffffff;">
+                  </div>
+
+                  <div>
+                    <label for="eventId" style="font-size: 12px; font-weight: 700; color: var(--navy-darker); display: block; margin-bottom: 6px;">Fotoyu Event Tag ID (Opsional)</label>
+                    <input type="text" id="eventId" placeholder="Contoh: EVT-2026-MARATHON-01" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-subtle); font-size: 12.5px; background: #ffffff;">
+                  </div>
+                </div>
               </div>
+
+              <!-- FORM SUBMIT BUTTON -->
+              <div style="margin-top: 10px;">
+                <button type="submit" class="btn btn-primary-blue" style="width: 100%; padding: 12px; font-size: 14px; font-weight: 800; border-radius: 12px; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);">Simpan Pengaturan Uploader</button>
+              </div>
+
             </form>
+          </div>
+        </section>
+
+        <!-- TAB: PENGATURAN APLIKASI -->
+        <section id="tab-app-settings" class="tab-panel">
+          <div class="form-page-card">
+            <h2>Pengaturan Tampilan & Performa Aplikasi</h2>
+            <div class="settings-group-container" style="margin-top: 15px;">
+
+              <!-- ITEM 1: BAHASA (SEGMENTED CONTROL) -->
+              <div class="settings-item-row">
+                <div class="settings-item-info">
+                  <h3 class="settings-item-title">Bahasa</h3>
+                  <p class="settings-item-sub">Bahasa antarmuka aplikasi.</p>
+                </div>
+                <div class="segmented-lang-control">
+                  <button type="button" class="lang-segment-btn active" data-lang="id">Indonesia</button>
+                  <button type="button" class="lang-segment-btn" data-lang="en">English</button>
+                </div>
+              </div>
+
+              <div class="settings-divider"></div>
+
+              <!-- ITEM 2: MODE GELAP (TOGGLE SWITCH SAKLAR) -->
+              <div class="settings-item-row">
+                <div class="settings-item-info">
+                  <h3 class="settings-item-title">Mode Gelap</h3>
+                  <p class="settings-item-sub">Tampilan gelap, nyaman di ruangan minim cahaya.</p>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="darkModeToggleSwitch">
+                  <span class="slider"></span>
+                </label>
+              </div>
+
+              <div class="settings-divider"></div>
+
+              <!-- ITEM 3: AUTO-START WATCHER (TOGGLE SWITCH SAKLAR) -->
+              <div class="settings-item-row">
+                <div class="settings-item-info">
+                  <h3 class="settings-item-title">Auto-Start Watcher</h3>
+                  <p class="settings-item-sub">Otomatis memantau target folder saat aplikasi baru dibuka.</p>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="autoStartWatcherCheckbox">
+                  <span class="slider"></span>
+                </label>
+              </div>
+
+            </div>
+
+            <!-- KIRIM LAPORAN ERROR & DIAGNOSTIK -->
+            <div class="form-group full-width" style="background: linear-gradient(135deg, rgba(239,68,68,0.06), rgba(220,38,38,0.02)); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 12px; padding: 20px; margin-top: 24px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+                  <div>
+                    <h3 style="font-size: 15px; font-weight: 800; color: var(--navy-darker);">Kirim Laporan Error & Diagnostik Sistem</h3>
+                    <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px; line-height: 1.5;">
+                      Jika mengalami kendala teknis, upload terhenti, atau error tak terduga, buat file laporan error terenkripsi untuk dikirim langsung ke WhatsApp Support Admin.
+                    </p>
+                  </div>
+                  <button type="button" id="sendErrorReportBtn" class="history-btn-retry" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3) !important; padding: 10px 20px !important;">
+                    Kirim Laporan Error
+                  </button>
+                </div>
+            </div>
           </div>
         </section>
 
         <!-- TAB 3: INFO KONTEN & METADATA -->
         <section id="tab-metadata" class="tab-panel">
           <div class="form-page-card">
-            <h2>Info Konten & Presets Metadata Foto</h2>
-            <form id="metadataForm" class="settings-form grid-form">
-              <div class="form-group">
-                <label for="price">Harga Dasar Foto (IDR)</label>
-                <input type="number" id="price" min="0" step="1000" placeholder="0 (Gratis) atau 15000">
+            <div class="info-content-header" style="margin-bottom: 24px;">
+              <h2 style="font-size: 18px; font-weight: 800; color: var(--navy-darker); margin: 0;">Informasi Foto dan Video</h2>
+              <p style="font-size: 13px; color: var(--text-muted); margin-top: 6px; margin-bottom: 0;">
+                Informasi ini diterapkan pada foto dan video dalam sesi upload berikutnya.
+              </p>
+            </div>
+
+            <form id="metadataForm" class="settings-form" style="display: flex; flex-direction: column; gap: 20px;">
+              
+              <!-- DUA KOLOM HARGA -->
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div class="form-group" style="margin: 0;">
+                  <label for="price" style="font-size: 13px; font-weight: 700; color: var(--navy-darker); margin-bottom: 6px; display: block;">
+                    Harga per Foto (IDR) <span style="color: #ef4444;">*</span>
+                  </label>
+                  <input type="number" id="price" min="0" step="1000" placeholder="20000" style="width: 100%; border-radius: 8px; padding: 10px 14px; border: 1px solid var(--border-subtle); font-weight: 600;">
+                </div>
+
+                <div class="form-group" style="margin: 0;">
+                  <label for="videoPrice" style="font-size: 13px; font-weight: 700; color: var(--navy-darker); margin-bottom: 6px; display: block;">
+                    Harga per Video (IDR)
+                  </label>
+                  <input type="number" id="videoPrice" min="0" step="1000" placeholder="85000" style="width: 100%; border-radius: 8px; padding: 10px 14px; border: 1px solid var(--border-subtle); font-weight: 600;">
+                  <span style="font-size: 11px; color: var(--text-muted); margin-top: 4px; display: block;">Kosongkan untuk memakai harga foto.</span>
+                </div>
               </div>
 
-              <div class="form-group">
-                <label for="userNicknames">Tag Nickname User (Opsional)</label>
-                <input type="text" id="userNicknames" placeholder="Contoh: fotografer1, studio_x">
+              <!-- LOKASI / EVENT PICKER BOX -->
+              <div class="form-group full-width" style="margin: 0;">
+                <label style="font-size: 13px; font-weight: 700; color: var(--navy-darker); margin-bottom: 6px; display: block;">
+                  Lokasi / Event <span style="color: #ef4444;">*</span>
+                </label>
+                
+                <div id="locationPickerBox" class="location-picker-box" onclick="window.openLocationModal && window.openLocationModal()" style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-card-sub, #f1f5f9); border: 1px solid var(--border-subtle, #cbd5e1); border-radius: 10px; padding: 12px 16px; cursor: pointer; transition: all 0.2s ease;">
+                  <div style="font-size: 13.5px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 80%;">
+                    <span>Aktif: </span>
+                    <strong id="activeLocationText" style="color: var(--navy-darker); font-weight: 700;">Sudirman Chase plaza (-6.2095175, 106.82171)</strong>
+                  </div>
+                  <button type="button" id="openLocationModalBtn" onclick="event.stopPropagation(); window.openLocationModal && window.openLocationModal()" style="background: none; border: none; color: #2563eb; font-weight: 700; font-size: 13.5px; cursor: pointer; display: flex; align-items: center; gap: 4px; flex-shrink: 0;">
+                    Ubah &gt;
+                  </button>
+                </div>
+
+                <!-- Hidden inputs for backward compatibility with upload engine -->
+                <input type="hidden" id="locationName" value="Sudirman Chase plaza">
+                <input type="hidden" id="latitude" value="-6.2095175">
+                <input type="hidden" id="longitude" value="106.82171">
+                <input type="hidden" id="eventId" value="">
+                <input type="hidden" id="userNicknames" value="">
               </div>
 
-              <div class="form-group full-width">
-                <label for="locationName">Nama Lokasi / FotoTree</label>
-                <input type="text" id="locationName" placeholder="lat: 3.583200 lng: 98.627400">
+              <!-- DESKRIPSI -->
+              <div class="form-group full-width" style="margin: 0;">
+                <label for="description" style="font-size: 13px; font-weight: 700; color: var(--navy-darker); margin-bottom: 6px; display: block;">
+                  Deskripsi <span style="color: #ef4444;">*</span>
+                </label>
+                <textarea id="description" rows="4" placeholder="Tes" style="width: 100%; border-radius: 10px; padding: 12px 16px; border: 1px solid var(--border-subtle); font-size: 13.5px; line-height: 1.5; resize: vertical;"></textarea>
               </div>
 
-              <div class="form-group">
-                <label for="latitude">Koordinat Latitude (GPS)</label>
-                <input type="number" id="latitude" step="0.000001" placeholder="3.5832">
-              </div>
-
-              <div class="form-group">
-                <label for="longitude">Koordinat Longitude (GPS)</label>
-                <input type="number" id="longitude" step="0.000001" placeholder="98.6274">
-              </div>
-
-              <div class="form-group full-width">
-                <label for="description">Deskripsi Foto (Opsional)</label>
-                <textarea id="description" rows="3" placeholder="Uploaded via FotoSync Pro"></textarea>
-              </div>
-
-              <div class="form-actions full-width">
-                <button type="submit" class="btn btn-primary-blue">Simpan Metadata</button>
+              <!-- SIMPAN BUTTON (BOTTOM RIGHT) -->
+              <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
+                <button type="submit" class="btn btn-primary-blue" style="padding: 12px 36px; border-radius: 10px; font-weight: 700; font-size: 14px; box-shadow: 0 4px 14px rgba(37,99,235,0.3);">
+                  Simpan
+                </button>
               </div>
             </form>
           </div>
@@ -469,28 +825,134 @@
         <!-- TAB 5: UPLOAD HISTORY -->
         <section id="tab-history" class="tab-panel">
           <div class="form-page-card">
-            <div class="card-title-row">
-              <h2>Riwayat Upload & Queue Database</h2>
-              <button id="retryFailedBtnHist" class="btn btn-secondary-sm">🔄 Retry Failed Items</button>
+            <div class="history-toolbar">
+              <div class="history-title-group">
+                <h2>Riwayat Upload & Queue Database</h2>
+                <p class="history-subtitle">
+                  Menampilkan <strong id="filteredHistoryCountText">0</strong> dari <strong id="totalHistoryCountText">0</strong> foto dalam antrean
+                </p>
+              </div>
+              <div class="history-controls">
+                <input type="text" id="historySearchInput" class="history-search-input" placeholder="Cari nama file..." />
+                <select id="historyStatusFilter" class="history-filter-select">
+                  <option value="ALL">Semua Status</option>
+                  <option value="PENDING">Pending</option>
+                  <option value="UPLOADING">Uploading</option>
+                  <option value="UPLOADED">Terupload</option>
+                  <option value="FAILED">Gagal</option>
+                </select>
+                <button id="clearCompletedQueueBtn" class="history-btn-clean" title="Bersihkan foto terupload agar tampilan & memori RAM ringan">Bersihkan Terupload</button>
+                <button id="retryFailedBtnHist" class="history-btn-retry">Retry Failed</button>
+              </div>
             </div>
             <div class="table-wrapper">
               <table class="queue-table">
                 <thead>
                   <tr>
+                    <th style="width: 60px;">Preview</th>
                     <th>Filename</th>
                     <th>Size</th>
                     <th>Status</th>
                     <th>Retries</th>
                     <th>Timestamp</th>
+                    <th style="width: 100px; text-align: center;">Aksi</th>
                   </tr>
                 </thead>
                 <tbody id="fullQueueTableBody">
                   <tr class="empty-row">
-                    <td colspan="5">Belum ada riwayat upload.</td>
+                    <td colspan="7">Belum ada riwayat upload.</td>
                   </tr>
                 </tbody>
               </table>
             </div>
+          </div>
+        </section>
+
+        <!-- TAB 6: PETUNJUK & BANTUAN -->
+        <section id="tab-help" class="tab-panel">
+          <div class="form-page-card" style="gap: 24px;">
+            <!-- HEADER PANDUAN -->
+            <div class="history-toolbar" style="margin-bottom: 0;">
+              <div class="history-title-group">
+                <h2>Petunjuk Penggunaan & Pusat Bantuan</h2>
+                <p class="history-subtitle">Panduan lengkap operasional FotoSync PRO untuk fotografer event di lapangan</p>
+              </div>
+              <a href="https://wa.me/628176498254?text=Halo%20Admin%20FotoSync%20PRO,%20saya%20butuh%20bantuan%20teknis" target="_blank" class="btn btn-secondary-sm" style="text-decoration: none; padding: 8px 16px; font-weight: 700;">
+                Hubungi Admin Support
+              </a>
+            </div>
+
+            <!-- 4 LANGKAH QUICK START GRID -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+              <div style="background: #f8fafc; border: 1px solid var(--border-subtle); border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 8px;">
+                <div style="font-size: 16px; font-weight: 800; color: #2563eb;">LANGKAH 1</div>
+                <h3 style="font-size: 14px; font-weight: 800; color: var(--navy-darker);">Login Akun Fotoyu</h3>
+                <p style="font-size: 12px; color: var(--text-muted); line-height: 1.5;">Klik tombol <strong>Login Fotoyu</strong> di pojok kanan atas untuk menghubungkan lisensi & token akun Anda.</p>
+              </div>
+
+              <div style="background: #f8fafc; border: 1px solid var(--border-subtle); border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 8px;">
+                <div style="font-size: 16px; font-weight: 800; color: #2563eb;">LANGKAH 2</div>
+                <h3 style="font-size: 14px; font-weight: 800; color: var(--navy-darker);">Hubungkan Kamera</h3>
+                <p style="font-size: 12px; color: var(--text-muted); line-height: 1.5;">Colok kabel USB (MTP) atau nyalakan Server WiFi di tab <strong>Live Shutter Connect</strong>.</p>
+              </div>
+
+              <div style="background: #f8fafc; border: 1px solid var(--border-subtle); border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 8px;">
+                <div style="font-size: 16px; font-weight: 800; color: #2563eb;">LANGKAH 3</div>
+                <h3 style="font-size: 14px; font-weight: 800; color: var(--navy-darker);">Set Metadata & Harga</h3>
+                <p style="font-size: 12px; color: var(--text-muted); line-height: 1.5;">Atur tag harga foto, deskripsi event, dan nama lokasi di tab <strong>Info Konten & Metadata</strong>.</p>
+              </div>
+
+              <div style="background: #f8fafc; border: 1px solid var(--border-subtle); border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 8px;">
+                <div style="font-size: 16px; font-weight: 800; color: #2563eb;">LANGKAH 4</div>
+                <h3 style="font-size: 14px; font-weight: 800; color: var(--navy-darker);">Auto-Ingest & Upload</h3>
+                <p style="font-size: 12px; color: var(--text-muted); line-height: 1.5;">Jepret kamera atau klik <strong>Start</strong>. Foto terupload otomatis ke AWS S3 & terdaftar di Fotoyu.</p>
+              </div>
+            </div>
+
+            <!-- FAQ & TROUBLESHOOTING SECTION -->
+            <div style="display: flex; flex-direction: column; gap: 14px; margin-top: 10px;">
+              <h3 style="font-size: 16px; font-weight: 800; color: var(--navy-darker); border-bottom: 1px solid var(--border-subtle); padding-bottom: 8px;">Pertanyaan Sering Ditanyakan (FAQ & Kendala Lapangan)</h3>
+
+              <div style="display: flex; flex-direction: column; gap: 12px;">
+                <details style="background: #f8fafc; border: 1px solid var(--border-subtle); border-radius: 10px; padding: 12px 16px; cursor: pointer;">
+                  <summary style="font-size: 13px; font-weight: 700; color: var(--navy-darker);">Mengapa Kamera Nikon / Sony / Canon saya belum terdeteksi saat dicolok kabel USB?</summary>
+                  <p style="font-size: 12px; color: var(--text-muted); margin-top: 8px; line-height: 1.6;">
+                    Pastikan pengaturan mode USB di menu kamera diatur ke <code>MTP / PTP</code> atau <code>Mass Storage</code> (bukan mode Charging atau Webcam). Gunakan kabel USB data bawaan berkualitas baik dan pastikan kamera dalam posisi menyala (ON).
+                  </p>
+                </details>
+
+                <details style="background: #f8fafc; border: 1px solid var(--border-subtle); border-radius: 10px; padding: 12px 16px; cursor: pointer;">
+                  <summary style="font-size: 13px; font-weight: 700; color: var(--navy-darker);">Mengapa muncul pesan "Duplicate Signature / Foto Sudah Terdaftar"?</summary>
+                  <p style="font-size: 12px; color: var(--text-muted); margin-top: 8px; line-height: 1.6;">
+                    Fotoyu menggunakan proteksi sidik jari digital (MD5 Hash). Jika foto tersebut pernah diunggah sebelumnya ke akun Fotoyu Anda, server akan secara otomatis menolak duplikasi agar foto tidak ganda di marketplace.
+                  </p>
+                </details>
+
+                <details style="background: #f8fafc; border: 1px solid var(--border-subtle); border-radius: 10px; padding: 12px 16px; cursor: pointer;">
+                  <summary style="font-size: 13px; font-weight: 700; color: var(--navy-darker);">Apakah foto yang diunggah adalah file High-Resolution (Hi-Res)?</summary>
+                  <p style="font-size: 12px; color: var(--text-muted); margin-top: 8px; line-height: 1.6;">
+                    <strong>YA, 100% HI-RES ASLI.</strong> FotoSync PRO mengirimkan file biner asli tanpa penurunan kualitas ke AWS S3 Fotoyu. Ketika pembeli membeli foto Anda di Fotoyu, pembeli akan mendapatkan file Hi-Res asli tersebut.
+                  </p>
+                </details>
+
+                <details style="background: #f8fafc; border: 1px solid var(--border-subtle); border-radius: 10px; padding: 12px 16px; cursor: pointer;">
+                  <summary style="font-size: 13px; font-weight: 700; color: var(--navy-darker);">Bagaimana cara mengaktifkan Lisensi Unlimited PRO?</summary>
+                  <p style="font-size: 12px; color: var(--text-muted); margin-top: 8px; line-height: 1.6;">
+                    Klik tombol status lisensi di sudut kiri bawah aplikasi (misal: <code>FREE PLAN</code>), pilih paket langganan yang Anda inginkan (1 Hari, 7 Hari, atau PRO), masukkan Master Key yang diberikan admin, lalu klik <strong>Aktifkan Lisensi</strong>.
+                  </p>
+                </details>
+              </div>
+            </div>
+
+            <!-- FOOTER INFO BOX -->
+            <div style="background: linear-gradient(135deg, rgba(37,99,235,0.06), rgba(15,23,42,0.03)); border: 1px solid rgba(37,99,235,0.2); border-radius: 12px; padding: 18px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-top: 10px;">
+              <div>
+                <h4 style="font-size: 14px; font-weight: 800; color: var(--navy-darker);">FotoSync PRO v1.0.0 — Live Ingest Suite</h4>
+                <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Dikembangkan oleh <strong>ghazabegins.id</strong> untuk fotografer event profesional Indonesia.</p>
+              </div>
+              <a href="https://ghazabegins.id/" target="_blank" class="btn btn-secondary-sm" style="padding: 8px 16px; font-weight: 700; text-decoration: none;">Kunjungi Website Resmi</a>
+            </div>
+
           </div>
         </section>
 
@@ -499,105 +961,113 @@
 
   </div>
 
-  <!-- UPGRADE TO PRO MODAL DIALOG -->
-  <div id="upgradeModal" class="modal-overlay hidden">
-    <div class="modal-content glass-card large-upgrade">
-      <button id="closeUpgradeModalBtn" class="modal-close-btn">&times;</button>
+  <!-- MODAL AKTIVASI LISENSI PRO -->
+  <div id="upgradeModal" class="modal-overlay hidden" onclick="if(event.target===this) window.closeLicenseModal && window.closeLicenseModal()" style="z-index: 10002;">
+    <div class="modal-content glass-card large-upgrade" style="max-width: 820px; width: 92%; max-height: 92vh; overflow-y: auto; padding: 28px; border-radius: 20px; box-shadow: 0 25px 60px rgba(0,0,0,0.4);">
       
-      <div class="modal-header text-center">
-        <div class="pro-crown-badge">👑</div>
-        <h2>Pilih Paket Langganan <span class="text-blue">FotoSync PRO</span></h2>
-        <p class="modal-subtitle">Tingkatkan kuota upload harian & kecepatan sync otomatis untuk event fotografi Anda.</p>
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span style="font-size: 28px;">👑</span>
+          <div>
+            <h2 style="font-size: 19px; font-weight: 800; color: var(--navy-darker); margin: 0;">Pilih Paket & Aktivasi Lisensi FotoSync PRO</h2>
+            <p style="font-size: 12.5px; color: var(--text-muted); margin: 3px 0 0 0;">Nikmati fitur auto-sync real-time tanpa batas kuota upload harian.</p>
+          </div>
+        </div>
+        <button type="button" id="closeUpgradeModalBtn" onclick="window.closeLicenseModal && window.closeLicenseModal()" class="modal-close-btn" style="position: static; font-size: 24px; color: var(--text-muted); background: none; border: none; cursor: pointer; padding: 4px 8px;">&times;</button>
       </div>
 
-      <!-- 3 PLANS COMPARISON GRID -->
-      <div class="plans-comparison-3col">
-        <!-- PAKET 1 HARI -->
-        <div class="plan-box trial-plan">
-          <span class="plan-badge-top free">EXPRESS</span>
-          <h3>PAKET 1 HARI</h3>
-          <p class="plan-price">Rp 25.000 <small>/ 24 jam</small></p>
-          <ul class="plan-features">
-            <li>⏱️ <strong>Masa Aktif 1 Hari</strong></li>
-            <li>🚀 <strong>UNLIMITED Foto</strong></li>
-            <li>⚡ 5 Worker High-Speed Sync</li>
-            <li>🔒 Terikat 1 Komputer / HWID</li>
-          </ul>
-          <a href="https://wa.me/628176498254?text=Halo%20Admin%20FotoSync%20PRO,%20saya%20ingin%20berlangganan%20Paket%201%20HARI%20(Rp%2025.000)" target="_blank" class="btn btn-whatsapp btn-sm" style="margin-top: auto; justify-content: center;">
-            💬 Order 1 Hari
-          </a>
+      <!-- 3 COLUMNS PLAN SELECTION CARDS -->
+      <div class="plans-comparison-3col" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; align-items: stretch;">
+        
+        <!-- PLAN 1: 1 HARI -->
+        <div class="plan-box" style="display: flex; flex-direction: column; justify-content: space-between; background: #f8fafc; border: 1px solid var(--border-subtle); border-radius: 16px; padding: 18px 16px; position: relative;">
+          <div>
+            <div class="plan-badge-top" style="font-size: 9.5px; font-weight: 800; color: #475569; background: #e2e8f0; padding: 3px 8px; border-radius: 6px; width: fit-content;">EVENT PASS</div>
+            <h3 style="font-size: 15px; font-weight: 800; margin: 8px 0 4px 0; color: var(--navy-darker);">1 Hari Pass</h3>
+            <div class="plan-price" style="font-size: 16px; font-weight: 800; color: var(--navy-darker);">Rp 25.000 <small style="font-size: 11px; font-weight: 600; color: var(--text-muted);">/ 24 Jam</small></div>
+            <ul class="plan-features" style="list-style: none; padding: 0; margin: 14px 0; display: flex; flex-direction: column; gap: 8px; font-size: 11.5px; color: #475569;">
+              <li>✓ Unlimited Upload 24 Jam</li>
+              <li>✓ Ingest USB Direct & WiFi</li>
+              <li>✓ Single Day Event Pass</li>
+              <li>✓ CS WhatsApp Support</li>
+            </ul>
+          </div>
+          <a href="https://wa.me/628176498254?text=Halo%20Admin%20FotoSync%20PRO,%20saya%20ingin%20beli%20Lisensi%201%20Hari%20(Rp%2025.000)" target="_blank" style="display: block; width: 100%; padding: 10px 12px; background: #334155; color: #ffffff !important; font-weight: 700; font-size: 12px; text-align: center; text-decoration: none; border-radius: 10px; box-shadow: 0 4px 12px rgba(51, 65, 85, 0.25); transition: all 0.2s ease;">Pesan Paket 1 Hari</a>
         </div>
 
-        <!-- PAKET 7 HARI -->
-        <div class="plan-box premium-plan highlighted">
-          <span class="popular-tag">POPULER</span>
-          <h3>PAKET 7 HARI</h3>
-          <p class="plan-price">Rp 50.000 <small>/ 7 hari</small></p>
-          <ul class="plan-features">
-            <li>⏱️ <strong>Masa Aktif 7 Hari</strong></li>
-            <li>🚀 <strong>UNLIMITED Foto</strong></li>
-            <li>⚡ 8 Worker High-Speed Sync</li>
-            <li>🔒 Terikat 1 Komputer / HWID</li>
-          </ul>
-          <a href="https://wa.me/628176498254?text=Halo%20Admin%20FotoSync%20PRO,%20saya%20ingin%20berlangganan%20Paket%207%20HARI%20(Rp%2050.000)" target="_blank" class="btn btn-whatsapp btn-sm" style="margin-top: auto; justify-content: center; background: #0284c7;">
-            💬 Order 7 Hari
-          </a>
+        <!-- PLAN 2: 7 HARI (POPULAR) -->
+        <div class="plan-box highlighted" style="display: flex; flex-direction: column; justify-content: space-between; background: #fefce8; border: 2px solid #f59e0b; border-radius: 16px; padding: 18px 16px; position: relative;">
+          <span class="popular-tag" style="position: absolute; top: -11px; right: 12px; background: #f59e0b; color: #ffffff; font-size: 9px; font-weight: 800; padding: 3px 10px; border-radius: 8px; letter-spacing: 0.5px; box-shadow: 0 2px 6px rgba(245, 158, 11, 0.4);">TERPOPULER</span>
+          <div>
+            <div class="plan-badge-top" style="font-size: 9.5px; font-weight: 800; color: #92400e; background: #fde68a; padding: 3px 8px; border-radius: 6px; width: fit-content;">WEEKLY PRO</div>
+            <h3 style="font-size: 15px; font-weight: 800; margin: 8px 0 4px 0; color: var(--navy-darker);">7 Hari Pass</h3>
+            <div class="plan-price" style="font-size: 16px; font-weight: 800; color: var(--navy-darker);">Rp 75.000 <small style="font-size: 11px; font-weight: 600; color: var(--text-muted);">/ 7 Hari</small></div>
+            <ul class="plan-features" style="list-style: none; padding: 0; margin: 14px 0; display: flex; flex-direction: column; gap: 8px; font-size: 11.5px; color: #475569;">
+              <li>✓ Unlimited Upload 7 Hari</li>
+              <li>✓ Ingest USB Direct & WiFi</li>
+              <li>✓ Hemat untuk Multi-Event</li>
+              <li>✓ CS Priority Support</li>
+            </ul>
+          </div>
+          <a href="https://wa.me/628176498254?text=Halo%20Admin%20FotoSync%20PRO,%20saya%20ingin%20beli%20Lisensi%207%20Hari%20(Rp%2075.000)" target="_blank" style="display: block; width: 100%; padding: 10px 12px; background: linear-gradient(135deg, #d97706, #b45309); color: #ffffff !important; font-weight: 700; font-size: 12px; text-align: center; text-decoration: none; border-radius: 10px; box-shadow: 0 4px 12px rgba(217, 119, 6, 0.35); transition: all 0.2s ease;">Pesan Paket 7 Hari</a>
         </div>
 
-        <!-- PAKET 30 HARI -->
-        <div class="plan-box pro-plan super-highlighted">
-          <span class="popular-tag pro-tag">BEST VALUE</span>
-          <h3>PAKET 30 HARI</h3>
-          <p class="plan-price">Rp 110.000 <small>/ 30 hari</small></p>
-          <ul class="plan-features">
-            <li>⏱️ <strong>Masa Aktif 30 Hari</strong></li>
-            <li>🚀 <strong>UNLIMITED Foto</strong></li>
-            <li>⚡ 10 Worker Parallel Sync</li>
-            <li>👑 Prioritas Utama Server</li>
-          </ul>
-          <a href="https://wa.me/628176498254?text=Halo%20Admin%20FotoSync%20PRO,%20saya%20ingin%20berlangganan%20Paket%2030%20HARI%20(Rp%20110.000)" target="_blank" class="btn btn-whatsapp btn-sm" style="margin-top: auto; justify-content: center; background: #2563eb;">
-            💬 Order 30 Hari
-          </a>
+        <!-- PLAN 3: 30 HARI (BEST VALUE) -->
+        <div class="plan-box super-highlighted" style="display: flex; flex-direction: column; justify-content: space-between; background: #eff6ff; border: 2px solid #2563eb; border-radius: 16px; padding: 18px 16px; position: relative;">
+          <span class="popular-tag pro-tag" style="position: absolute; top: -11px; right: 12px; background: #2563eb; color: #ffffff; font-size: 9px; font-weight: 800; padding: 3px 10px; border-radius: 8px; letter-spacing: 0.5px; box-shadow: 0 2px 6px rgba(37, 99, 235, 0.4);">ULTIMATE</span>
+          <div>
+            <div class="plan-badge-top" style="font-size: 9.5px; font-weight: 800; color: #1e40af; background: #bfdbfe; padding: 3px 8px; border-radius: 6px; width: fit-content;">MONTHLY PRO</div>
+            <h3 style="font-size: 15px; font-weight: 800; margin: 8px 0 4px 0; color: var(--navy-darker);">30 Hari Pass</h3>
+            <div class="plan-price" style="font-size: 16px; font-weight: 800; color: var(--navy-darker);">Rp 200.000 <small style="font-size: 11px; font-weight: 600; color: var(--text-muted);">/ 1 Bulan</small></div>
+            <ul class="plan-features" style="list-style: none; padding: 0; margin: 14px 0; display: flex; flex-direction: column; gap: 8px; font-size: 11.5px; color: #475569;">
+              <li>✓ Unlimited Upload 30 Hari Full</li>
+              <li>✓ Ingest USB Direct & WiFi</li>
+              <li>✓ High Concurrency 6 Workers</li>
+              <li>✓ CS VIP Direct Fast Response</li>
+            </ul>
+          </div>
+          <a href="https://wa.me/628176498254?text=Halo%20Admin%20FotoSync%20PRO,%20saya%20ingin%20beli%20Lisensi%2030%20Hari%20(Rp%20200.000)" target="_blank" style="display: block; width: 100%; padding: 10px 12px; background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #ffffff !important; font-weight: 700; font-size: 12px; text-align: center; text-decoration: none; border-radius: 10px; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35); transition: all 0.2s ease;">Pesan Paket 30 Hari</a>
         </div>
+
       </div>
 
-      <!-- WHATSAPP ADMIN CONTACT BANNER -->
-      <div class="admin-contact-banner">
+      <!-- INPUT AKTIVASI LISENSI -->
+      <div class="activation-section" style="background: #f8fafc; border: 1px solid var(--border-subtle); border-radius: 14px; padding: 16px; margin-bottom: 14px;">
+        <label for="licenseKeyInput" style="font-size: 13px; font-weight: 700; color: var(--navy-darker); margin-bottom: 8px; display: block;">Sudah Memiliki Kode Lisensi? Aktifkan di sini:</label>
+        <div class="input-with-button" style="display: flex; gap: 10px;">
+          <input type="text" id="licenseKeyInput" placeholder="Contoh: PROTJP-FOTOYU-XXXX-YYYY" autocomplete="off" style="flex: 1; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--border-subtle); font-size: 13px; font-weight: 700; background: #ffffff; color: var(--navy-darker);">
+          <button type="button" id="activateLicenseBtn" class="btn btn-primary-blue" style="padding: 10px 20px; font-weight: 700; border-radius: 10px; font-size: 13px;">Aktifkan Lisensi</button>
+        </div>
+        <div id="licenseMsgAlert" class="license-alert hidden" style="margin-top: 10px;"></div>
+      </div>
+
+      <!-- WHATSAPP CS CONTACT BANNER -->
+      <div class="admin-contact-banner" style="background: linear-gradient(135deg, rgba(37,99,235,0.05), rgba(16,185,129,0.05)); border: 1px solid rgba(37,99,235,0.15); border-radius: 14px; padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
         <div class="contact-info">
-          <span>💬 Ingin berlangganan atau aktivasi lisensi?</span>
-          <small>Hubungi Admin Official via WhatsApp (08176498254) atau Email <a href="mailto:r00t@ghazabegins.id" style="color: #2563eb; text-decoration: underline;">r00t@ghazabegins.id</a></small>
+          <span style="font-size: 13px; font-weight: 800; color: var(--navy-darker); display: block;">💬 Bantuan & Pertanyaan Lisensi?</span>
+          <small style="font-size: 11.5px; color: var(--text-muted);">Hubungi Admin Official WhatsApp (08176498254) atau Email r00t@ghazabegins.id</small>
         </div>
-        <a href="https://wa.me/628176498254?text=Halo%20Admin%20FotoSync%20PRO,%20saya%20ingin%20bertanya%20tentang%20lisensi%20software" target="_blank" class="btn btn-whatsapp">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <a href="https://wa.me/628176498254?text=Halo%20Admin%20FotoSync%20PRO,%20saya%20ingin%20bertanya%20tentang%20lisensi" target="_blank" class="btn btn-whatsapp" style="background: #25d366; color: #ffffff !important; padding: 8px 16px; border-radius: 10px; font-weight: 700; font-size: 12.5px; text-decoration: none; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.25);">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
           </svg>
           Chat Admin WhatsApp
         </a>
       </div>
 
-      <div class="activation-section">
-        <label for="licenseKeyInput">Masukkan Kunci Lisensi Master (Premium / PRO):</label>
-        <div class="input-with-button">
-          <input type="text" id="licenseKeyInput" placeholder="PREM-FOTOYU-XXXX-YYYY atau PROTJP-FOTOYU-XXXX-YYYY" autocomplete="off">
-          <button id="activateLicenseBtn" class="btn btn-primary-blue">Aktifkan Lisensi</button>
-        </div>
-        <div id="licenseMsgAlert" class="license-alert hidden"></div>
-      </div>
     </div>
   </div>
 
   <!-- CUSTOM ALERT / CONFIRM WARNING MODAL -->
   <div id="alertModal" class="modal-overlay hidden">
     <div class="modal-content glass-card alert-modal-content text-center">
-      <div id="alertModalIcon" class="alert-icon-box warning">
-        <span>⚠️</span>
-      </div>
+      <div id="alertModalIcon" class="alert-icon-box warning" style="display: none;"></div>
       <h2 id="alertModalTitle">Login Diperlukan</h2>
       <p id="alertModalMessage" class="modal-subtitle">Anda belum login ke akun Fotoyu. Silakan login terlebih dahulu untuk mengaktifkan sesi uploader.</p>
       
       <div class="alert-modal-actions">
         <button id="alertModalCancelBtn" class="btn btn-secondary">Batal</button>
-        <button id="alertModalConfirmBtn" class="btn btn-primary-blue">🔑 Login Sekarang</button>
+        <button id="alertModalConfirmBtn" class="btn btn-primary-blue">Login Sekarang</button>
       </div>
     </div>
   </div>
@@ -608,7 +1078,6 @@
       <button id="closeUpdateModalBtn" class="modal-close-btn">&times;</button>
       
       <div class="modal-header text-center">
-        <div class="pro-crown-badge">🚀</div>
         <h2>Versi Baru <span class="text-blue" id="latestVersionBadge">v1.0.1</span> Tersedia</h2>
         <p class="modal-subtitle">Versi baru FotoSync PRO telah dirilis dengan peningkatan performa & fitur baru.</p>
       </div>
@@ -635,6 +1104,61 @@
       <div class="alert-modal-actions" style="margin-top: 8px;">
         <button id="skipUpdateBtn" class="btn btn-secondary">Nanti Saja</button>
         <button id="startUpdateBtn" class="btn btn-primary-blue">⚡ Update Sekarang</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHOTO PREVIEW LIGHTBOX MODAL -->
+  <div id="photoPreviewModal" class="modal-overlay hidden" style="z-index: 10000;">
+    <div class="modal-content glass-card photo-preview-card" style="max-width: 760px; width: 90%; padding: 24px;">
+      <button id="closePhotoPreviewModalBtn" class="modal-close-btn" style="font-size: 24px;">&times;</button>
+      <div class="photo-preview-header" style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 12px; border-bottom: 1px solid var(--border-subtle);">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span style="font-size: 26px;">📸</span>
+          <div>
+            <h2 id="photoPreviewFilename" style="font-size: 16px; font-weight: 800; color: var(--navy-darker); margin: 0;">Nama_Foto.JPG</h2>
+            <span id="photoPreviewSub" style="font-size: 12px; color: var(--text-muted);">Foto Hasil Live Shutter Connect</span>
+          </div>
+        </div>
+        <span id="photoPreviewSourceBadge" class="stream-badge" style="font-size: 11px; padding: 4px 10px;">USB Cable MTP</span>
+      </div>
+
+      <div class="photo-preview-body" style="margin: 16px 0; text-align: center; background: #090d16; border-radius: 14px; padding: 16px; display: flex; justify-content: center; align-items: center; min-height: 340px; max-height: 520px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">
+        <img id="photoPreviewImg" src="" alt="Live Photo Preview" style="max-width: 100%; max-height: 480px; border-radius: 8px; object-fit: contain; box-shadow: 0 12px 35px rgba(0,0,0,0.6);" />
+      </div>
+
+      <div class="photo-preview-footer" style="display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 12px; color: var(--text-muted);">
+        <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 75%;">
+          📍 Lokasi File: <code id="photoPreviewPath" style="font-size: 11px; background: #f1f5f9; padding: 3px 8px; border-radius: 4px; color: var(--primary-blue);">C:\...</code>
+        </div>
+        <button id="photoPreviewCloseBtn" class="btn btn-secondary">Tutup Preview</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL CARI LOKASI / EVENT (FOTOYU APP STYLE) -->
+  <div id="locationSearchModal" class="modal-overlay hidden" onclick="if(event.target===this) window.closeLocationModal && window.closeLocationModal()" style="z-index: 10001;">
+    <div class="modal-content glass-card location-modal-content" style="max-width: 580px; width: 92%; padding: 24px; border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.3);">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+        <h2 style="font-size: 18px; font-weight: 800; color: var(--navy-darker); margin: 0;">Cari Lokasi / Event</h2>
+        <button type="button" id="closeLocationModalBtn" onclick="window.closeLocationModal && window.closeLocationModal()" class="modal-close-btn" style="position: static; font-size: 20px; color: var(--text-muted); background: none; border: none; cursor: pointer; padding: 4px 8px;">&times;</button>
+      </div>
+
+      <!-- SEARCH INPUT ROW -->
+      <div style="display: flex; gap: 10px; margin-bottom: 18px;">
+        <input type="text" id="locationSearchInput" placeholder="medan" style="flex: 1; background: var(--bg-card-sub, #f1f5f9); border: 1px solid var(--border-subtle, #cbd5e1); border-radius: 10px; padding: 10px 14px; font-size: 14px; color: var(--navy-darker); font-weight: 600;" autocomplete="off" />
+        <button type="button" id="locationSearchSubmitBtn" onclick="window.performLocationSearch && window.performLocationSearch(document.getElementById('locationSearchInput').value)" class="btn btn-secondary" style="padding: 10px 20px; font-size: 14px; font-weight: 700; border-radius: 10px; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          Cari
+        </button>
+      </div>
+
+      <!-- RESULTS LIST CONTAINER -->
+      <div id="locationSearchResults" style="display: flex; flex-direction: column; gap: 12px; max-height: 420px; overflow-y: auto; padding-right: 4px;">
+        <!-- Dynamic Result Cards Rendered Here -->
       </div>
     </div>
   </div>
