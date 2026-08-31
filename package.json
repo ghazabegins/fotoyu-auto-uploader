@@ -34,6 +34,7 @@
     "publish": null,
     "appId": "com.fotoyu.autouploader",
     "productName": "Fotoyu Uploader Pro",
+    "compression": "maximum",
     "directories": {
       "output": "dist"
     },
@@ -51,9 +52,30 @@
       "gatekeeperAssess": false,
       "identity": null,
       "target": [
-        "dmg",
-        "zip"
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        },
+        {
+          "target": "zip",
+          "arch": ["x64", "arm64"]
+        }
       ]
+    },
+    "dmg": {
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ],
+      "format": "ULFO"
     },
     "win": {
       "icon": "build/icon.png",
