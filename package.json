@@ -41,6 +41,9 @@
       "src/**/*",
       "package.json"
     ],
+    "asarUnpack": [
+      "src/main/scripts/**/*"
+    ],
     "mac": {
       "category": "public.app-category.photography",
       "icon": "build/icon.png",

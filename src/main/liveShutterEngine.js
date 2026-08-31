@@ -80,8 +80,13 @@ class LiveShutterEngine {
   checkMtpCamera(targetDir) {
     return new Promise((resolve) => {
       if (process.platform !== 'win32') return resolve({ success: false });
-      const scriptPath = path.join(__dirname, 'scripts', 'scan_mtp_camera.ps1');
-      if (!fs.existsSync(scriptPath)) return resolve({ success: false });
+      let scriptPath = path.join(__dirname, 'scripts', 'scan_mtp_camera.ps1');
+      if (scriptPath.includes('app.asar')) {
+        scriptPath = scriptPath.replace('app.asar', 'app.asar.unpacked');
+      }
+      if (!fs.existsSync(scriptPath)) {
+        return resolve({ success: false });
+      }
 
       const args = ['-ExecutionPolicy', 'Bypass', '-File', scriptPath, '-Action', 'sync', '-TargetDir', targetDir];
       execFile('powershell.exe', args, { windowsHide: true, timeout: 15000 }, (err, stdout) => {
