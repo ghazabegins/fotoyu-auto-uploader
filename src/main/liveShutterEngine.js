@@ -53,14 +53,32 @@ class LiveShutterEngine {
 
   getLocalIPAddress() {
     const interfaces = os.networkInterfaces();
+    let fallbackIp = '127.0.0.1';
+
     for (const name of Object.keys(interfaces)) {
+      const lowerName = name.toLowerCase();
+      // Skip macOS virtual / tunnel / AirDrop interfaces
+      if (lowerName.includes('awdl') || lowerName.includes('llw') || lowerName.includes('utun') || 
+          lowerName.includes('vbox') || lowerName.includes('vmnet') || lowerName.includes('docker') || 
+          lowerName.includes('bridge')) {
+        continue;
+      }
+
       for (const iface of interfaces[name]) {
         if (iface.family === 'IPv4' && !iface.internal) {
-          return iface.address;
+          const ip = iface.address;
+          // Ignore link-local 169.254.x.x addresses
+          if (ip.startsWith('169.254.')) continue;
+
+          // Prioritize real LAN / Wi-Fi IP ranges (192.168.x.x, 10.x.x.x, 172.x.x.x)
+          if (ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.')) {
+            return ip;
+          }
+          fallbackIp = ip;
         }
       }
     }
-    return '127.0.0.1';
+    return fallbackIp;
   }
 
   // --- 1. PERFECTED USB CABLE & MTP AUTO-DETECTION ENGINE ---
