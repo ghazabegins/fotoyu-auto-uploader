@@ -1,18 +1,21 @@
 <?php
-// FotoSync PRO Product Landing Page (Clean Light Theme)
+// FotoSync PRO Product Landing Page
+// Theme: Deep Pine (#004643) & Warm Cream (#F0EDE5)
 require_once __DIR__ . '/config.php';
 
 // Fetch dynamic version config
 $configFile = __DIR__ . '/data/version_config.json';
-$defaultWin = 'https://ghazabegins.id/fotosync/downloads/FotoSync-Setup-Latest.exe';
-$defaultMac = 'https://ghazabegins.id/fotosync/downloads/FotoSync-Setup-Latest.dmg';
+$defaultWin = 'https://github.com/ghazabegins/fotoyu-auto-uploader/releases/download/v1.3.0/Fotoyu.Uploader.Pro.Setup.1.3.0.exe';
+$defaultMacArm = 'https://github.com/ghazabegins/fotoyu-auto-uploader/releases/download/v1.3.0/Fotoyu.Uploader.Pro-1.3.0-arm64.dmg';
+$defaultMacIntel = 'https://github.com/ghazabegins/fotoyu-auto-uploader/releases/download/v1.3.0/Fotoyu.Uploader.Pro-1.3.0.dmg';
 
 $versionData = [
-    'latest_version' => '1.0.0',
+    'latest_version' => '1.3.0',
     'windows_download_url' => $defaultWin,
-    'mac_download_url' => $defaultMac,
-    'release_notes' => "• Penambahan sistem kuota 3 tier (Free 20, Premium 500, Pro Unlimited)\n• Integrasi Kontak Admin WhatsApp Official\n• Peningkatan sistem auto-sync & penanganan kuota harian real-time",
-    'released_at' => date('Y-m-d')
+    'mac_download_url' => $defaultMacArm,
+    'mac_intel_download_url' => $defaultMacIntel,
+    'release_notes' => "• Pembedaan Sistem Lengkap: Kamera USB Direct (Live Shutter) vs SD Card Reader (Batch Ingest)\n• Otomatisasi Input Folder Target ke Dashboard & Antrean Upload\n• Integrasi Penuh macOS: Apple ImageCaptureCore Camera Bridge (Swift)\n• Otomatisasi Build CI/CD Multi-platform (Windows .exe & macOS .dmg)\n• Optimasi Ukuran Installer (>70% Lebih Ringan) & Launcher 1-Klik macOS",
+    'released_at' => '2026-09-01'
 ];
 
 if (file_exists($configFile)) {
@@ -20,21 +23,27 @@ if (file_exists($configFile)) {
     if ($loaded && is_array($loaded)) {
         $versionData = array_merge($versionData, $loaded);
         if (empty($versionData['windows_download_url']) && !empty($versionData['download_url'])) {
-            $versionData['windows_download_url'] = $data['download_url'];
+            $versionData['windows_download_url'] = $versionData['download_url'];
         }
         if (empty($versionData['mac_download_url'])) {
-            $versionData['mac_download_url'] = str_replace('.exe', '.dmg', $versionData['windows_download_url']);
+            $versionData['mac_download_url'] = $defaultMacArm;
         }
     }
 }
+
+// Quick server-side detection fallback
+$ua = strtolower($_SERVER['HTTP_USER_AGENT'] ?? '');
+$isServerMobile = preg_match('/android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i', $ua);
+$isServerMac = strpos($ua, 'mac') !== false && !$isServerMobile;
+$isServerWin = strpos($ua, 'win') !== false && !$isServerMobile;
 ?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FotoSync PRO — Protokol Auto-Sync & Real-Time Photo Uploader untuk Event Fotografi</title>
-  <meta name="description" content="Software uploader foto real-time berkecepatan tinggi dengan multi-worker parallel sync, monitoring folder FTP kamera, dan integrasi langsung ke platform Fotoyu.">
+  <title>FotoSync PRO — Software Auto-Sync & Real-Time Uploader untuk Fotografer Event</title>
+  <meta name="description" content="Software desktop uploader foto real-time untuk Windows dan macOS. Mendukung Live Shutter USB kabel langsung, WiFi FTP server kamera, dan integrasi API Fotoyu.">
   
   <link rel="icon" type="image/png" href="assets/logo.png">
   <link rel="shortcut icon" type="image/png" href="assets/logo.png">
@@ -45,31 +54,46 @@ if (file_exists($configFile)) {
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   
   <style>
-    /* CLEAN LIGHT DESIGN SYSTEM (MATCHING SOFTWARE THEME) */
+    /* DESIGN SYSTEM: PINE TEAL (#004643) & WARM CREAM (#F0EDE5) */
     :root {
-      --bg-body: #f8fafc;
-      --bg-card: #ffffff;
-      --bg-card-sub: #f1f5f9;
-      --navy-darker: #0f172a;
-      --navy-dark: #1e293b;
-      --text-main: #334155;
-      --text-muted: #64748b;
-      --text-dim: #94a3b8;
-      --primary-blue: #2563eb;
-      --primary-blue-hover: #1d4ed8;
-      --accent-cyan: #0284c7;
-      --border-light: #e2e8f0;
-      --border-blue: rgba(37, 99, 235, 0.25);
-      --shadow-subtle: 0 4px 20px -2px rgba(15, 23, 42, 0.05);
-      --shadow-card: 0 10px 30px -5px rgba(15, 23, 42, 0.08);
-      --shadow-elevated: 0 20px 40px -10px rgba(37, 99, 235, 0.12);
+      --pine-primary: #004643;
+      --pine-hover: #003734;
+      --pine-deep: #002b29;
+      --pine-surface: rgba(0, 70, 67, 0.06);
+      --pine-border: rgba(0, 70, 67, 0.16);
+      --pine-glow: rgba(0, 70, 67, 0.25);
+      
+      --cream-bg: #F0EDE5;
+      --cream-surface: #FAF8F5;
+      --card-white: #FFFFFF;
+      
+      --text-main: #0B2422;
+      --text-muted: #4A6360;
+      --text-dim: #7C9491;
+      
+      --accent-mint: #ABD1C6;
+      --accent-gold: #F9BC60;
+      --accent-danger: #E16162;
+      --accent-success: #2A9D8F;
+
+      --shadow-sm: 0 2px 8px rgba(0, 70, 67, 0.05);
+      --shadow-md: 0 8px 24px -4px rgba(0, 70, 67, 0.08);
+      --shadow-lg: 0 16px 36px -6px rgba(0, 70, 67, 0.12);
+      --shadow-xl: 0 24px 48px -8px rgba(0, 70, 67, 0.16);
+      
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+      --radius-full: 9999px;
+      
       --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
       --font-mono: 'JetBrains Mono', monospace;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
     body {
-      background-color: var(--bg-body);
+      background-color: var(--cream-bg);
       color: var(--text-main);
       font-family: var(--font-sans);
       line-height: 1.6;
@@ -77,500 +101,1065 @@ if (file_exists($configFile)) {
       -webkit-font-smoothing: antialiased;
     }
 
-    /* LIGHT GRADIENT BLURS */
-    .glow-bg-1 {
-      position: absolute; top: -120px; left: 50%; transform: translateX(-50%);
-      width: 900px; height: 500px;
-      background: radial-gradient(circle, rgba(37, 99, 235, 0.08) 0%, rgba(2, 132, 199, 0.04) 50%, rgba(255, 255, 255, 0) 70%);
-      filter: blur(80px); pointer-events: none; z-index: 0;
+    /* BACKGROUND GLOW ACCENTS */
+    .ambient-glow {
+      position: absolute;
+      top: -150px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 1000px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(0, 70, 67, 0.12) 0%, rgba(171, 209, 198, 0.08) 50%, rgba(240, 237, 229, 0) 75%);
+      filter: blur(100px);
+      pointer-events: none;
+      z-index: 0;
     }
 
-    /* CONTAINER */
-    .container { max-width: 1240px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+    .container {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 0 24px;
+      position: relative;
+      z-index: 1;
+    }
 
     /* NAVBAR */
     .navbar {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 20px 0; border-bottom: 1px solid var(--border-light);
-      position: sticky; top: 0; background: rgba(248, 250, 252, 0.9);
-      backdrop-filter: blur(12px); z-index: 100;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 18px 0;
+      border-bottom: 1px solid var(--pine-border);
+      position: sticky;
+      top: 0;
+      background: rgba(240, 237, 229, 0.92);
+      backdrop-filter: blur(14px);
+      z-index: 1000;
     }
-    .nav-brand { display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--navy-darker); }
-    .nav-brand img { width: 38px; height: 38px; object-fit: contain; }
-    .nav-brand h1 { font-size: 21px; font-weight: 800; letter-spacing: -0.5px; }
-    .nav-brand h1 span { color: var(--primary-blue); font-size: 11px; background: rgba(37, 99, 235, 0.08); border: 1px solid var(--border-blue); padding: 3px 9px; border-radius: 6px; margin-left: 6px; vertical-align: middle; }
-
-    .nav-links { display: flex; align-items: center; gap: 32px; list-style: none; }
-    .nav-links a { color: var(--text-muted); text-decoration: none; font-size: 14.5px; font-weight: 700; transition: color 0.2s; }
-    .nav-links a:hover { color: var(--primary-blue); }
-
-    .btn-nav-action {
-      background: var(--primary-blue);
-      color: #fff; text-decoration: none; padding: 10px 22px; border-radius: 30px;
-      font-size: 13.5px; font-weight: 800; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
-      transition: all 0.25s ease; border: none; display: inline-flex; align-items: center; gap: 8px;
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--pine-primary);
     }
-    .btn-nav-action:hover { background: var(--primary-blue-hover); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4); }
+    .nav-brand img {
+      width: 40px;
+      height: 40px;
+      object-fit: contain;
+    }
+    .nav-brand h1 {
+      font-size: 21px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: var(--pine-primary);
+    }
+    .nav-brand h1 span {
+      color: #fff;
+      font-size: 11px;
+      background: var(--pine-primary);
+      padding: 3px 8px;
+      border-radius: 6px;
+      margin-left: 6px;
+      vertical-align: middle;
+      font-weight: 800;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      list-style: none;
+    }
+    .nav-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 14.5px;
+      font-weight: 700;
+      transition: all 0.2s;
+    }
+    .nav-links a:hover {
+      color: var(--pine-primary);
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .btn-nav-admin {
+      background: transparent;
+      color: var(--pine-primary);
+      text-decoration: none;
+      padding: 9px 18px;
+      border-radius: var(--radius-full);
+      font-size: 13.5px;
+      font-weight: 700;
+      border: 1.5px solid var(--pine-primary);
+      transition: all 0.25s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-nav-admin:hover {
+      background: var(--pine-surface);
+      transform: translateY(-1px);
+    }
+
+    .btn-nav-cta {
+      background: var(--pine-primary);
+      color: var(--cream-bg);
+      text-decoration: none;
+      padding: 10px 22px;
+      border-radius: var(--radius-full);
+      font-size: 13.5px;
+      font-weight: 800;
+      box-shadow: 0 4px 14px var(--pine-glow);
+      transition: all 0.25s ease;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-nav-cta:hover {
+      background: var(--pine-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px var(--pine-glow);
+    }
+
+    .mobile-menu-btn {
+      display: none;
+      background: transparent;
+      border: 1.5px solid var(--pine-border);
+      border-radius: var(--radius-sm);
+      color: var(--pine-primary);
+      font-size: 20px;
+      padding: 6px 12px;
+      cursor: pointer;
+    }
 
     /* HERO SECTION */
-    .hero-section { text-align: center; padding: 75px 0 50px 0; }
+    .hero-section {
+      text-align: center;
+      padding: 65px 0 45px 0;
+    }
     .hero-badge {
-      display: inline-flex; align-items: center; gap: 8px;
-      background: #ffffff; border: 1px solid var(--border-blue);
-      color: var(--primary-blue); padding: 6px 18px; border-radius: 30px;
-      font-size: 12.5px; font-weight: 800; letter-spacing: 0.5px; margin-bottom: 24px;
-      box-shadow: var(--shadow-subtle);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--card-white);
+      border: 1px solid var(--pine-border);
+      color: var(--pine-primary);
+      padding: 6px 18px;
+      border-radius: var(--radius-full);
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 24px;
+      box-shadow: var(--shadow-sm);
     }
-    .hero-title {
-      font-size: 48px; font-weight: 800; line-height: 1.18; letter-spacing: -1.5px;
-      max-width: 920px; margin: 0 auto 20px auto; color: var(--navy-darker);
+    .badge-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--accent-success);
+      border-radius: 50%;
+      display: inline-block;
+      box-shadow: 0 0 8px rgba(42, 157, 143, 0.6);
+      animation: pulse 2s infinite;
     }
-    .hero-subtitle {
-      font-size: 18px; color: var(--text-muted); max-width: 780px; margin: 0 auto 36px auto;
-      font-weight: 500; line-height: 1.6;
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(1.2); }
     }
 
-    /* DOWNLOAD CTA BUTTONS ROW */
-    .download-cta-group {
-      display: flex; justify-content: center; align-items: center; gap: 16px; flex-wrap: wrap;
-      margin-bottom: 28px;
+    .hero-title {
+      font-size: 52px;
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -1.2px;
+      color: var(--text-main);
+      max-width: 900px;
+      margin: 0 auto 20px auto;
     }
+    .hero-title span.highlight {
+      color: var(--pine-primary);
+      background: linear-gradient(120deg, rgba(0, 70, 67, 0.1) 0%, rgba(171, 209, 198, 0.4) 100%);
+      padding: 0 8px;
+      border-radius: 8px;
+      display: inline-block;
+    }
+
+    .hero-subtitle {
+      font-size: 18px;
+      color: var(--text-muted);
+      max-width: 760px;
+      margin: 0 auto 36px auto;
+      font-weight: 500;
+      line-height: 1.6;
+    }
+
+    /* SMART DOWNLOAD CTA AREA */
+    .download-cta-box {
+      background: var(--card-white);
+      border: 1.5px solid var(--pine-border);
+      border-radius: var(--radius-lg);
+      padding: 30px;
+      max-width: 780px;
+      margin: 0 auto 50px auto;
+      box-shadow: var(--shadow-lg);
+      text-align: center;
+    }
+    .device-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--pine-primary);
+      background: var(--pine-surface);
+      padding: 5px 14px;
+      border-radius: var(--radius-full);
+      margin-bottom: 20px;
+    }
+
     .btn-download-primary {
-      background: linear-gradient(135deg, var(--primary-blue) 0%, #1d4ed8 100%);
-      color: #ffffff; text-decoration: none; padding: 16px 34px; border-radius: 14px;
-      font-size: 16px; font-weight: 800; display: inline-flex; align-items: center; gap: 12px;
-      box-shadow: 0 10px 25px rgba(37, 99, 235, 0.3); transition: all 0.25s ease; border: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      background: var(--pine-primary);
+      color: var(--cream-bg);
+      text-decoration: none;
+      padding: 16px 36px;
+      border-radius: var(--radius-md);
+      font-size: 17px;
+      font-weight: 800;
+      box-shadow: 0 10px 26px var(--pine-glow);
+      transition: all 0.25s ease;
+      cursor: pointer;
+      border: none;
     }
-    .btn-download-primary:hover { transform: translateY(-3px); box-shadow: 0 14px 35px rgba(37, 99, 235, 0.45); }
+    .btn-download-primary:hover {
+      background: var(--pine-hover);
+      transform: translateY(-3px);
+      box-shadow: 0 14px 32px var(--pine-glow);
+    }
+    .btn-download-primary svg {
+      width: 24px;
+      height: 24px;
+    }
 
     .btn-download-secondary {
-      background: #ffffff; color: var(--navy-darker); text-decoration: none;
-      padding: 16px 28px; border-radius: 14px; font-size: 15px; font-weight: 700;
-      display: inline-flex; align-items: center; gap: 10px; border: 1px solid var(--border-light);
-      box-shadow: var(--shadow-subtle); transition: all 0.25s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: var(--cream-surface);
+      color: var(--pine-primary);
+      text-decoration: none;
+      padding: 14px 26px;
+      border-radius: var(--radius-md);
+      font-size: 15px;
+      font-weight: 700;
+      border: 1.5px solid var(--pine-border);
+      transition: all 0.2s ease;
+      margin-top: 10px;
     }
-    .btn-download-secondary:hover { background: #f1f5f9; border-color: #cbd5e1; transform: translateY(-2px); }
-
-    .tech-badges-row {
-      display: flex; justify-content: center; align-items: center; gap: 20px; flex-wrap: wrap;
-      font-size: 13px; color: var(--text-muted); font-weight: 700; margin-bottom: 55px;
+    .btn-download-secondary:hover {
+      background: var(--pine-surface);
+      border-color: var(--pine-primary);
     }
-    .tech-badges-row span { display: inline-flex; align-items: center; gap: 6px; }
 
-    /* MOCKUP CONTAINER (SOFTWARE LIGHT STYLING) */
-    .mockup-container {
-      background: var(--bg-card); border: 1px solid var(--border-light);
-      border-radius: 24px; padding: 12px; box-shadow: var(--shadow-elevated);
-      position: relative; max-width: 1060px; margin: 0 auto; overflow: hidden;
+    /* Dual Buttons Container for Mobile & Multi-OS */
+    .dual-download-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-top: 10px;
+    }
+    .os-card-btn {
+      background: var(--cream-surface);
+      border: 1.5px solid var(--pine-border);
+      border-radius: var(--radius-md);
+      padding: 18px 20px;
+      text-align: left;
+      text-decoration: none;
+      color: var(--text-main);
+      transition: all 0.25s ease;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .os-card-btn:hover {
+      border-color: var(--pine-primary);
+      background: var(--card-white);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+    .os-card-btn.active-target {
+      background: var(--pine-primary);
+      color: #fff;
+      border-color: var(--pine-primary);
+      box-shadow: 0 8px 20px var(--pine-glow);
+    }
+    .os-card-btn.active-target .os-meta {
+      color: var(--accent-mint);
+    }
+    .os-icon {
+      font-size: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .os-info h4 {
+      font-size: 16px;
+      font-weight: 800;
+    }
+    .os-meta {
+      font-size: 12px;
+      color: var(--text-dim);
+      font-weight: 600;
+      margin-top: 2px;
+    }
+
+    .mac-chip-selector {
+      margin-top: 12px;
+      font-size: 13px;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .mac-chip-selector a {
+      color: var(--pine-primary);
+      font-weight: 700;
+      text-decoration: underline;
+    }
+
+    .download-specs-note {
+      font-size: 12.5px;
+      color: var(--text-dim);
+      margin-top: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .download-specs-note span {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    /* MOCKUP SHOWCASE CARD */
+    .mockup-preview {
+      background: #111A18;
+      border: 2px solid var(--pine-primary);
+      border-radius: var(--radius-lg);
+      padding: 16px;
+      box-shadow: var(--shadow-xl);
+      max-width: 960px;
+      margin: 0 auto 80px auto;
+      color: #F0EDE5;
+      text-align: left;
     }
     .mockup-header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 12px 18px; background: #f1f5f9; border-radius: 16px 16px 0 0;
-      border-bottom: 1px solid var(--border-light);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      margin-bottom: 16px;
     }
-    .mac-dots { display: flex; gap: 8px; }
-    .dot { width: 12px; height: 12px; border-radius: 50%; }
-    .dot-red { background: #ef4444; } .dot-yellow { background: #f59e0b; } .dot-green { background: #10b981; }
-    .mockup-title { font-size: 12px; font-family: var(--font-mono); color: var(--text-muted); font-weight: 600; }
+    .mockup-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+    }
+    .mockup-dot.red { background: #FF5F56; }
+    .mockup-dot.yellow { background: #FFBD2E; }
+    .mockup-dot.green { background: #27C93F; }
+    .mockup-title-bar {
+      font-size: 12px;
+      color: #9DB4B0;
+      margin-left: 12px;
+      font-family: var(--font-mono);
+      font-weight: 600;
+    }
 
     .mockup-body {
-      padding: 24px; background: #f8fafc; border-radius: 0 0 16px 16px;
-      display: grid; grid-template-columns: 250px 1fr; gap: 20px; text-align: left;
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      gap: 16px;
+      min-height: 260px;
     }
-    .mockup-sidebar { background: #ffffff; border-radius: 14px; padding: 16px; border: 1px solid var(--border-light); box-shadow: var(--shadow-subtle); }
-    .mockup-main { background: #ffffff; border-radius: 14px; padding: 20px; border: 1px solid var(--border-light); box-shadow: var(--shadow-subtle); }
-
-    /* STATS METRICS BAR */
-    .stats-bar {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px;
-      margin: 80px 0; padding: 32px; background: #ffffff;
-      border: 1px solid var(--border-light); border-radius: 20px; box-shadow: var(--shadow-card);
+    .mockup-sidebar {
+      background: #182624;
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      font-size: 12.5px;
     }
-    .stat-item { text-align: center; }
-    .stat-item .num { font-size: 36px; font-weight: 800; color: var(--primary-blue); font-family: var(--font-sans); letter-spacing: -1px; }
-    .stat-item .label { font-size: 13.5px; color: var(--text-muted); font-weight: 700; margin-top: 4px; }
+    .mockup-main {
+      background: #182624;
+      border-radius: var(--radius-sm);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .mockup-stat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .mockup-stat-box {
+      background: #203330;
+      padding: 12px;
+      border-radius: var(--radius-sm);
+      border-left: 3px solid var(--accent-mint);
+    }
+    .mockup-stat-box .num {
+      font-size: 22px;
+      font-weight: 800;
+      color: #fff;
+      font-family: var(--font-mono);
+    }
+    .mockup-stat-box .lbl {
+      font-size: 11px;
+      color: #8CA6A2;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+    .mockup-log {
+      background: #0E1716;
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      line-height: 1.7;
+      color: #9DB4B0;
+    }
+    .mockup-log .success { color: #52B788; }
+    .mockup-log .info { color: #64DFDF; }
 
-    /* SECTION TITLE */
-    .section-title-wrapper { text-align: center; margin-bottom: 50px; }
-    .section-subtitle { color: var(--primary-blue); font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 8px; display: block; }
-    .section-title { font-size: 34px; font-weight: 800; letter-spacing: -0.8px; color: var(--navy-darker); }
+    /* FEATURES GRID SECTION */
+    .section-title-wrap {
+      text-align: center;
+      margin-bottom: 50px;
+    }
+    .section-tag {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--pine-primary);
+      background: var(--pine-surface);
+      padding: 5px 14px;
+      border-radius: var(--radius-full);
+      margin-bottom: 12px;
+    }
+    .section-title {
+      font-size: 36px;
+      font-weight: 800;
+      color: var(--text-main);
+      letter-spacing: -0.8px;
+    }
+    .section-desc {
+      font-size: 16px;
+      color: var(--text-muted);
+      max-width: 600px;
+      margin: 10px auto 0 auto;
+    }
 
-    /* FEATURES GRID */
     .features-grid {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 24px;
-      margin-bottom: 100px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      margin-bottom: 80px;
     }
     .feature-card {
-      background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 20px;
-      padding: 32px; transition: all 0.3s ease; position: relative; box-shadow: var(--shadow-card);
+      background: var(--card-white);
+      border: 1px solid var(--pine-border);
+      border-radius: var(--radius-md);
+      padding: 30px 26px;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.25s ease;
+      display: flex;
+      flex-direction: column;
     }
-    .feature-card:hover { transform: translateY(-5px); border-color: var(--primary-blue); box-shadow: var(--shadow-elevated); }
-    .feature-icon {
-      width: 52px; height: 52px; border-radius: 14px; background: #eff6ff;
-      border: 1px solid var(--border-blue); display: flex; align-items: center; justify-content: center;
-      font-size: 24px; margin-bottom: 20px; color: var(--primary-blue);
+    .feature-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-md);
+      border-color: var(--pine-primary);
     }
-    .feature-card h3 { font-size: 20px; font-weight: 800; margin-bottom: 10px; color: var(--navy-darker); }
-    .feature-card p { font-size: 14px; color: var(--text-muted); line-height: 1.6; }
+    .feature-icon-box {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: var(--pine-surface);
+      color: var(--pine-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      margin-bottom: 20px;
+    }
+    .feature-card h3 {
+      font-size: 19px;
+      font-weight: 800;
+      color: var(--text-main);
+      margin-bottom: 10px;
+    }
+    .feature-card p {
+      font-size: 14.5px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
 
-    /* WORKFLOW STEPS */
-    .workflow-steps {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px;
-      margin-bottom: 100px;
+    /* LICENSE VERIFICATION SECTION */
+    .license-verify-section {
+      background: var(--card-white);
+      border: 1.5px solid var(--pine-border);
+      border-radius: var(--radius-lg);
+      padding: 44px;
+      max-width: 860px;
+      margin: 0 auto 80px auto;
+      box-shadow: var(--shadow-md);
+      text-align: center;
     }
-    .step-card {
-      background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 18px;
-      padding: 26px; box-shadow: var(--shadow-card);
+    .verify-input-group {
+      display: flex;
+      gap: 12px;
+      max-width: 580px;
+      margin: 24px auto 14px auto;
     }
-    .step-num {
-      width: 38px; height: 38px; border-radius: 50%; background: var(--primary-blue);
-      color: #fff; font-weight: 800; font-size: 15px; display: flex; align-items: center; justify-content: center;
-      margin-bottom: 16px; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+    .verify-input {
+      flex: 1;
+      height: 48px;
+      padding: 0 18px;
+      border: 1.5px solid var(--pine-border);
+      border-radius: var(--radius-sm);
+      font-family: var(--font-mono);
+      font-size: 14.5px;
+      font-weight: 700;
+      color: var(--text-main);
+      background: var(--cream-surface);
+      outline: none;
+      transition: border-color 0.2s;
+      text-transform: uppercase;
     }
-    .step-card h4 { font-size: 17px; font-weight: 800; margin-bottom: 8px; color: var(--navy-darker); }
-    .step-card p { font-size: 13.5px; color: var(--text-muted); }
-
-    /* PRICING GRID */
-    .pricing-grid {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 28px;
-      margin-bottom: 100px;
+    .verify-input:focus {
+      border-color: var(--pine-primary);
+      background: #fff;
+      box-shadow: 0 0 0 3px var(--pine-glow);
     }
-    .price-card {
-      background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 24px;
-      padding: 36px 30px; display: flex; flex-direction: column; position: relative;
-      box-shadow: var(--shadow-card);
+    .btn-verify {
+      height: 48px;
+      padding: 0 24px;
+      background: var(--pine-primary);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 14.5px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: background 0.2s;
     }
-    .price-card.popular {
-      border: 2px solid var(--primary-blue);
-      background: #ffffff;
-      box-shadow: var(--shadow-elevated);
+    .btn-verify:hover {
+      background: var(--pine-hover);
     }
-    .badge-popular {
-      position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
-      background: var(--primary-blue); color: #fff;
-      font-size: 11px; font-weight: 800; padding: 4px 16px; border-radius: 20px;
-      text-transform: uppercase; letter-spacing: 0.8px;
+    .verify-result-box {
+      margin-top: 20px;
+      padding: 16px;
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      display: none;
     }
-    .plan-title { font-size: 22px; font-weight: 800; margin-bottom: 8px; color: var(--navy-darker); }
-    .plan-price { font-size: 38px; font-weight: 800; color: var(--navy-darker); font-family: var(--font-mono); margin-bottom: 20px; }
-    .plan-price small { font-size: 14px; color: var(--text-muted); font-family: var(--font-sans); }
-    .plan-features { list-style: none; margin-bottom: 30px; display: flex; flex-direction: column; gap: 12px; }
-    .plan-features li { font-size: 14px; color: var(--text-muted); display: flex; align-items: center; gap: 10px; }
-    .plan-features li strong { color: var(--navy-darker); }
-
-    .btn-pricing {
-      margin-top: auto; padding: 14px; border-radius: 12px; text-align: center;
-      text-decoration: none; font-weight: 800; font-size: 14px; transition: all 0.2s;
-    }
-    .btn-pricing.outline { background: #f1f5f9; border: 1px solid var(--border-light); color: var(--navy-darker); }
-    .btn-pricing.outline:hover { background: #e2e8f0; }
-    .btn-pricing.cyan { background: var(--primary-blue); color: #fff; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3); }
-    .btn-pricing.cyan:hover { background: var(--primary-blue-hover); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4); }
 
     /* FOOTER */
     .footer {
-      border-top: 1px solid var(--border-light); padding: 40px 0; text-align: center;
-      color: var(--text-muted); font-size: 13.5px; background: #ffffff;
+      border-top: 1px solid var(--pine-border);
+      padding: 40px 0 30px 0;
+      background: var(--cream-surface);
+      margin-top: 60px;
     }
-    .footer a { color: var(--primary-blue); text-decoration: none; font-weight: 700; }
-    .footer a:hover { text-decoration: underline; }
+    .footer-inner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+    .footer-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--pine-primary);
+      font-weight: 800;
+      font-size: 17px;
+    }
+    .footer-brand img { width: 30px; height: 30px; }
+    .footer-copy {
+      font-size: 13px;
+      color: var(--text-dim);
+    }
+    .footer-links {
+      display: flex;
+      gap: 20px;
+      list-style: none;
+    }
+    .footer-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 13.5px;
+      font-weight: 700;
+      transition: color 0.2s;
+    }
+    .footer-links a:hover {
+      color: var(--pine-primary);
+    }
+
+    /* RESPONSIVE DESIGN */
+    @media (max-width: 992px) {
+      .hero-title { font-size: 40px; }
+      .features-grid { grid-template-columns: 1fr 1fr; }
+      .mockup-body { grid-template-columns: 1fr; }
+      .mockup-sidebar { display: none; }
+    }
+
+    @media (max-width: 768px) {
+      .navbar .nav-links { display: none; }
+      .mobile-menu-btn { display: block; }
+      .hero-title { font-size: 32px; }
+      .hero-subtitle { font-size: 16px; }
+      .features-grid { grid-template-columns: 1fr; }
+      .dual-download-grid { grid-template-columns: 1fr; }
+      .verify-input-group { flex-direction: column; }
+      .btn-verify { width: 100%; }
+      .footer-inner { flex-direction: column; text-align: center; }
+      .download-cta-box { padding: 22px 16px; }
+    }
   </style>
 </head>
 <body>
 
-  <div class="glow-bg-1"></div>
+  <!-- Ambient Glow -->
+  <div class="ambient-glow"></div>
 
-  <!-- NAVBAR (NO ADMIN PORTAL BUTTON) -->
-  <header class="navbar container">
-    <a href="index.php" class="nav-brand">
-      <img src="assets/logo.png" alt="FotoSync PRO Logo">
-      <h1>FotoSync <span>PRO</span></h1>
-    </a>
+  <!-- NAVBAR -->
+  <header class="navbar">
+    <div class="container" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+      <a href="index.php" class="nav-brand">
+        <img src="assets/logo.png" alt="FotoSync Logo">
+        <h1>FotoSync <span>PRO</span></h1>
+      </a>
 
-    <ul class="nav-links">
-      <li><a href="#fitur">Fitur Utama</a></li>
-      <li><a href="#workflow">Cara Kerja</a></li>
-      <li><a href="#harga">Paket & Harga</a></li>
-    </ul>
+      <ul class="nav-links">
+        <li><a href="#fitur">Fitur Unggulan</a></li>
+        <li><a href="#alur-kerja">Alur Live Shutter</a></li>
+        <li><a href="#cek-lisensi">Cek Lisensi</a></li>
+        <li><a href="#download">Unduh v<?= htmlspecialchars($versionData['latest_version']) ?></a></li>
+      </ul>
 
-    <a href="#download" class="btn-nav-action">
-      <span>⚡ Download v<?= htmlspecialchars($versionData['latest_version']) ?></span>
-    </a>
+      <div class="nav-actions">
+        <a href="admin/index.php" class="btn-nav-admin">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          Portal Admin
+        </a>
+        <a href="#download" class="btn-nav-cta">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          Unduh Software
+        </a>
+        <button class="mobile-menu-btn" onclick="toggleMobileMenu()">☰</button>
+      </div>
+    </div>
   </header>
+
+  <!-- MOBILE DRAWER -->
+  <div id="mobileDrawer" style="display:none; background: var(--cream-surface); border-bottom: 1.5px solid var(--pine-border); padding: 18px 24px;">
+    <ul style="list-style: none; display: flex; flex-direction: column; gap: 14px;">
+      <li><a href="#fitur" style="color: var(--pine-primary); font-weight: 700; text-decoration: none;" onclick="toggleMobileMenu()">Fitur Unggulan</a></li>
+      <li><a href="#alur-kerja" style="color: var(--pine-primary); font-weight: 700; text-decoration: none;" onclick="toggleMobileMenu()">Alur Live Shutter</a></li>
+      <li><a href="#cek-lisensi" style="color: var(--pine-primary); font-weight: 700; text-decoration: none;" onclick="toggleMobileMenu()">Cek Lisensi</a></li>
+      <li><a href="#download" style="color: var(--pine-primary); font-weight: 700; text-decoration: none;" onclick="toggleMobileMenu()">Unduh Aplikasi</a></li>
+      <li><a href="admin/index.php" style="color: var(--pine-primary); font-weight: 700; text-decoration: none;">Login Admin Portal</a></li>
+    </ul>
+  </div>
 
   <main class="container">
 
     <!-- HERO SECTION -->
     <section class="hero-section">
       <div class="hero-badge">
-        <span>🚀 FOTOYU AUTO-SYNC PROTOCOL V<?= htmlspecialchars($versionData['latest_version']) ?> IS LIVE</span>
+        <span class="badge-dot"></span>
+        <span>Versi <?= htmlspecialchars($versionData['latest_version']) ?> Rilis — Dual Device & macOS Support</span>
       </div>
 
-      <h1 class="hero-title">
-        Protokol Auto-Sync Foto Real-Time Berkecepatan Tinggi untuk Event & Studio
-      </h1>
+      <h2 class="hero-title">
+        Sinkronisasi & Unggah Foto Event <br>
+        <span class="highlight">Otomatis dari Kamera ke Fotoyu</span>
+      </h2>
 
       <p class="hero-subtitle">
-        Otomatisasi pengunggahan foto dari kamera ke platform Fotoyu secara instan tanpa hambatan. Dilengkapi teknologi Multi-Worker parallel sync, monitoring folder FTP, dan enkripsi lisensi hardware.
+        Software desktop berkecepatan tinggi untuk fotografer event race, marathon, wisuda, dan panggung.
+        Mendukung Live Shutter kabel USB langsung, WiFi FTP server kamera, dan multi-worker uploader tanpa batasan kuota.
       </p>
 
-      <!-- DUAL DOWNLOAD BUTTONS -->
-      <div id="download" class="download-cta-group">
-        <a href="<?= htmlspecialchars($versionData['windows_download_url']) ?>" class="btn-download-primary">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="7 10 12 15 17 10"></polyline>
-            <line x1="12" y1="15" x2="12" y2="3"></line>
-          </svg>
-          <span>Download untuk Windows (.exe)</span>
-        </a>
+      <!-- DYNAMIC DOWNLOAD CTA BOX -->
+      <div class="download-cta-box" id="download">
+        <div class="device-indicator" id="deviceBadge">
+          <span>🔍 Mendeteksi Perangkat Anda...</span>
+        </div>
 
-        <a href="<?= htmlspecialchars($versionData['mac_download_url']) ?>" class="btn-download-secondary">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 14.59L8.41 12 9.83 10.59 12 12.76l4.17-4.17L17.59 10z"></path>
-          </svg>
-          <span>Download untuk macOS (.dmg)</span>
-        </a>
+        <!-- Primary Target Container (Dynamically rendered by JS based on OS) -->
+        <div id="primaryDownloadArea">
+          <!-- Default Server Fallback (Overwritten by JS) -->
+          <?php if ($isServerMac): ?>
+            <a href="<?= htmlspecialchars($versionData['mac_download_url']) ?>" class="btn-download-primary" id="mainDownloadBtn">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.62-.75 1.04-1.8 0.92-2.85-.9.04-2 .6-2.65 1.35-.58.66-1.09 1.73-.95 2.76 1.01.08 2.05-.51 2.68-1.26z"/></svg>
+              <span>Unduh untuk macOS (.dmg)</span>
+            </a>
+          <?php else: ?>
+            <a href="<?= htmlspecialchars($versionData['windows_download_url']) ?>" class="btn-download-primary" id="mainDownloadBtn">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.901-1.799"/></svg>
+              <span>Unduh untuk Windows (.exe)</span>
+            </a>
+          <?php endif; ?>
+        </div>
+
+        <!-- Mac Chip Options (Apple Silicon vs Intel) -->
+        <div class="mac-chip-selector" id="macChipSelector" style="display: none;">
+          <span>Chip Mac Anda:</span>
+          <strong>Apple Silicon M1/M2/M3/M4 (Rekomendasi)</strong>
+          <span>•</span>
+          <a href="<?= htmlspecialchars($versionData['mac_intel_download_url']) ?>">Unduh Versi Intel Mac</a>
+        </div>
+
+        <!-- Secondary Alternate OS Option -->
+        <div id="secondaryDownloadArea" style="margin-top: 14px;">
+          <!-- Populated by JS -->
+        </div>
+
+        <!-- Specs & Safety Note -->
+        <div class="download-specs-note">
+          <span>📦 Ukuran Ringan: <strong>~65 - 75 MB</strong></span>
+          <span>🛡️ Bebas Virus & Malware</span>
+          <span>⚡ Kompatibel: Windows 10/11 & macOS Sonoma/Ventura/Sequoia</span>
+        </div>
       </div>
 
-      <div class="tech-badges-row">
-        <span>⚡ 10 Multi-Worker Parallel</span>
-        <span>·</span>
-        <span>🔒 HWID Hardware Binding</span>
-        <span>·</span>
-        <span>📡 S3 Direct Presigned Upload</span>
-        <span>·</span>
-        <span>🎯 Metadata GPS & Price Tagging</span>
-      </div>
-
-      <!-- MOCKUP UI DISPLAY (SOFTWARE LIGHT STYLE) -->
-      <div class="mockup-container">
+      <!-- MOCKUP UI PREVIEW -->
+      <div class="mockup-preview">
         <div class="mockup-header">
-          <div class="mac-dots">
-            <span class="dot dot-red"></span>
-            <span class="dot dot-yellow"></span>
-            <span class="dot dot-green"></span>
-          </div>
-          <span class="mockup-title">FOTOSYNC PRO v1.0.0 — Direct Upload Engine</span>
-          <span></span>
+          <div class="mockup-dot red"></div>
+          <div class="mockup-dot yellow"></div>
+          <div class="mockup-dot green"></div>
+          <span class="mockup-title-bar">FotoSync PRO v<?= htmlspecialchars($versionData['latest_version']) ?> — Real-Time Shutter Engine</span>
         </div>
         <div class="mockup-body">
           <div class="mockup-sidebar">
-            <div style="font-size: 11px; font-weight: 800; color: var(--primary-blue); letter-spacing: 0.8px; margin-bottom: 12px;">MANAJEMEN UPLOADER</div>
-            <div style="background: #eff6ff; border: 1px solid var(--border-blue); padding: 8px 12px; border-radius: 8px; font-size: 12px; font-weight: 800; color: var(--primary-blue); margin-bottom: 8px;">🚀 Upload & Monitor</div>
-            <div style="padding: 8px 12px; font-size: 12px; color: var(--text-muted); font-weight: 600;">📋 Riwayat Upload</div>
-            <div style="padding: 8px 12px; font-size: 12px; color: var(--text-muted); font-weight: 600;">⚙️ Pengaturan API</div>
-            <div style="padding: 8px 12px; font-size: 12px; color: var(--text-muted); font-weight: 600;">📍 Preset Metadata GPS</div>
-            
-            <div style="margin-top: 40px; padding: 10px; background: #f1f5f9; border-radius: 8px; border: 1px solid var(--border-light);">
-              <span style="font-size: 10px; color: var(--text-muted); display: block;">Status Lisensi</span>
-              <strong style="font-size: 11px; color: #059669;">👑 PRO UNLIMITED</strong>
-            </div>
+            <div style="font-weight: 800; color: #fff; margin-bottom: 12px; font-size: 13px;">STATUS ENGINE</div>
+            <div style="margin-bottom: 8px;">🟢 Watcher: <strong>AKTIF</strong></div>
+            <div style="margin-bottom: 8px;">📷 Kamera: <strong>Nikon Z 6_2</strong></div>
+            <div style="margin-bottom: 8px;">⚡ Mode: <strong>Live Shutter USB</strong></div>
+            <div style="margin-bottom: 8px;">📡 Port FTP: <strong>2128 Online</strong></div>
+            <div style="margin-top: 16px; font-size: 11px; color: #648480;">Terhubung ke API Fotoyu Multi-Worker</div>
           </div>
-
           <div class="mockup-main">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-              <div>
-                <h3 style="font-size: 16.5px; font-weight: 800; color: var(--navy-darker);">Mandiri Jogja Marathon 2026</h3>
-                <span style="font-size: 11.5px; color: #059669; font-weight: 700;">● WATCHER RUNNING (FTP SYNC)</span>
+            <div class="mockup-stat-grid">
+              <div class="mockup-stat-box">
+                <div class="num">1,482</div>
+                <div class="lbl">Foto Terunggah</div>
               </div>
-              <span style="background: var(--primary-blue); color: #fff; font-size: 11px; font-weight: 800; padding: 4px 12px; border-radius: 20px;">6 WORKERS ACTIVE</span>
-            </div>
-
-            <div style="background: #f8fafc; border-radius: 12px; padding: 18px; border: 1px solid var(--border-light); margin-bottom: 16px;">
-              <div style="display: flex; justify-content: space-between; font-size: 28px; font-weight: 800; font-family: var(--font-sans); letter-spacing: -0.5px;">
-                <span><strong style="color: var(--primary-blue);">1,284</strong> <small style="font-size: 13px; color: var(--text-muted);">/ 1,284 foto</small></span>
-                <span style="color: #059669;">100%</span>
+              <div class="mockup-stat-box">
+                <div class="num">0</div>
+                <div class="lbl">Antrean Pending</div>
               </div>
-              <div style="width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; margin-top: 8px;">
-                <div style="width: 100%; height: 100%; background: linear-gradient(90deg, #3b82f6, #1d4ed8);"></div>
+              <div class="mockup-stat-box">
+                <div class="num">100%</div>
+                <div class="lbl">Tingkat Sukses</div>
               </div>
             </div>
-
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; font-size: 11px;">
-              <div style="background: #f1f5f9; padding: 10px; border-radius: 8px; border: 1px solid var(--border-light);">
-                <span style="color: var(--text-muted);">Kecepatan</span>
-                <strong style="display: block; font-size: 13px; color: var(--navy-darker);">4.2 foto/dtk</strong>
-              </div>
-              <div style="background: #f1f5f9; padding: 10px; border-radius: 8px; border: 1px solid var(--border-light);">
-                <span style="color: var(--text-muted);">Status Jaringan</span>
-                <strong style="display: block; font-size: 13px; color: #059669;">Stabil (52 Mbps)</strong>
-              </div>
-              <div style="background: #f1f5f9; padding: 10px; border-radius: 8px; border: 1px solid var(--border-light);">
-                <span style="color: var(--text-muted);">Sisa Kuota</span>
-                <strong style="display: block; font-size: 13px; color: var(--primary-blue);">UNLIMITED</strong>
-              </div>
+            <div class="mockup-log">
+              <div>[16:45:02] <span class="info">🔌 [Live Shutter]</span> Kamera Nikon Z 6_2 terhubung via USB Direct.</div>
+              <div>[16:45:08] <span class="success">⚡ [Live Shot]</span> DSC_9821.JPG ditangkap kamera, langsung dialirkan ke antrean!</div>
+              <div>[16:45:11] <span class="success">🚀 [Uploaded]</span> DSC_9821.JPG sukses terunggah ke Fotoyu (1.8s) via S3 Parallel.</div>
             </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- METRICS NUMBERS BAR -->
-    <section class="stats-bar">
-      <div class="stat-item">
-        <div class="num">10 Workers</div>
-        <div class="label">High-Speed Parallel Upload</div>
-      </div>
-      <div class="stat-item">
-        <div class="num">0.2 Dtk</div>
-        <div class="label">Latency Monitoring Watcher</div>
-      </div>
-      <div class="stat-item">
-        <div class="num">100%</div>
-        <div class="label">Otomatisasi FTP Direct Sync</div>
-      </div>
-      <div class="stat-item">
-        <div class="num">UNLIMITED</div>
-        <div class="label">Opsi Kuota Harian (PRO Plan)</div>
-      </div>
-    </section>
-
-    <!-- FEATURES GRID SECTION -->
+    <!-- FEATURES SECTION -->
     <section id="fitur" style="padding: 40px 0;">
-      <div class="section-title-wrapper">
-        <span class="section-subtitle">FITUR UNGGULAN SOFTWARE</span>
-        <h2 class="section-title">Dirancang Khusus untuk Alur Kerja Fotografer Profesional</h2>
+      <div class="section-title-wrap">
+        <span class="section-tag">Fitur Kelas Profesional</span>
+        <h2 class="section-title">Dirancang untuk Ritme Kerja Fotografer Event</h2>
+        <p class="section-desc">Kecepatan, kestabilan koneksi, dan akurasi upload foto di lapangan tanpa kompromi.</p>
       </div>
 
       <div class="features-grid">
         <div class="feature-card">
-          <div class="feature-icon">📸</div>
-          <h3>Instant Watch Folder Monitor</h3>
-          <p>Mendeteksi file foto JPEG baru yang dikirim oleh kamera via FTP secara otomatis dalam waktu kurang dari 200 milidetik tanpa perlu mengunggah manual.</p>
+          <div class="feature-icon-box">🔌</div>
+          <h3>Dual Device Live Ingest</h3>
+          <p>Mendeteksi secara cerdas antara jepretan kamera langsung via kabel USB (Live Shutter) maupun kartu memori di SD Card reader.</p>
         </div>
 
         <div class="feature-card">
-          <div class="feature-icon">🚀</div>
+          <div class="feature-icon-box">📡</div>
+          <h3>Wireless WiFi FTP Server</h3>
+          <p>Memiliki server FTP internal port 2128. Cukup hubungkan kamera (Sony, Canon, Nikon, Fuji) ke WiFi lokal/hotspot, foto otomatis terkirim.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon-box">🍏</div>
+          <h3>Native Apple ImageCapture</h3>
+          <p>Terintegrasi langsung di macOS melalui framework resmi Apple ImageCaptureCore via native Swift bridge. Sangat responsif dan hemat baterai.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon-box">⚡</div>
           <h3>Multi-Worker Parallel Sync</h3>
-          <p>Dukungan 1 hingga 10 worker simultaneous yang memaksimalkan seluruh potensi bandwidth jaringan fiber di lokasi event maraton atau studio.</p>
+          <p>Mengunggah hingga 5 foto secara bersamaan dengan retry backoff otomatis. Foto masuk langsung diproses tanpa antrean macet.</p>
         </div>
 
         <div class="feature-card">
-          <div class="feature-icon">🔒</div>
-          <h3>Enterprise Device Binding (HWID)</h3>
-          <p>Keamanan lisensi tingkat lanjut di mana Master Key terikat pada enkripsi Hardware ID komputer pengguna untuk mencegah penyalahgunaan akun.</p>
+          <div class="feature-icon-box">💾</div>
+          <h3>Anti-Duplikasi SHA256</h3>
+          <p>Dilengkapi checksum hashing otomatis untuk memastikan foto yang sama tidak pernah terunggah dua kali, menghemat kuota internet lapangan.</p>
         </div>
 
         <div class="feature-card">
-          <div class="feature-icon">📍</div>
-          <h3>Auto Metadata & GPS Tagging</h3>
-          <p>Menyematkan harga foto, tag lokasi, koordinat GPS (lat/lng), dan nickname fotografer pada tiap berkas foto sebelum diunggah ke server.</p>
-        </div>
-
-        <div class="feature-card">
-          <div class="feature-icon">📡</div>
-          <h3>Direct S3 Presigned Upload</h3>
-          <p>Jalur komunikasi API langsung ke storage S3 Presigned URL untuk kecepatan transfer maksimal dan efisiensi memori RAM komputer.</p>
-        </div>
-
-        <div class="feature-card">
-          <div class="feature-icon">📊</div>
-          <h3>Live Telemetry & Diagnostics</h3>
-          <p>Monitoring indikator jaringan real-time, statistik upload per detik, serta log pengujian koneksi untuk memastikan integritas data.</p>
+          <div class="feature-icon-box">🎨</div>
+          <h3>Tema Modern Dark & Light</h3>
+          <p>Antarmuka elegan dengan transisi warna halus (#004643 & #F0EDE5) yang nyaman di mata saat pemotretan terik siang maupun malam hari.</p>
         </div>
       </div>
     </section>
 
-    <!-- WORKFLOW SECTION -->
-    <section id="workflow" style="padding: 40px 0;">
-      <div class="section-title-wrapper">
-        <span class="section-subtitle">ALUR KERJA MUDAH</span>
-        <h2 class="section-title">Hanya 4 Langkah dari Kamera ke Server</h2>
+    <!-- ALUR KERJA SECTION -->
+    <section id="alur-kerja" style="padding: 40px 0;">
+      <div class="section-title-wrap">
+        <span class="section-tag">Cara Kerja Sederhana</span>
+        <h2 class="section-title">3 Langkah Mudah Live Shutter di Lokasi</h2>
       </div>
 
-      <div class="workflow-steps">
-        <div class="step-card">
-          <div class="step-num">1</div>
-          <h4>Unduh & Install</h4>
-          <p>Download file installer FotoSync PRO untuk sistem operasi Windows (.exe) atau macOS (.dmg).</p>
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; max-width: 1060px; margin: 0 auto 80px auto;">
+        <div style="background: var(--card-white); border: 1.5px solid var(--pine-border); border-radius: var(--radius-md); padding: 30px; text-align: center;">
+          <div style="font-size: 32px; font-weight: 800; color: var(--pine-primary); font-family: var(--font-mono); margin-bottom: 12px;">01</div>
+          <h4 style="font-size: 18px; font-weight: 800; margin-bottom: 8px;">Colokkan Kamera</h4>
+          <p style="font-size: 14px; color: var(--text-muted);">Sambungkan kamera via kabel USB atau tancapkan SD Card ke laptop Anda. Aplikasi otomatis mendeteksi perangkat.</p>
         </div>
 
-        <div class="step-card">
-          <div class="step-num">2</div>
-          <h4>Login & Masukkan Key</h4>
-          <p>Login dengan akun Fotoyu Anda dan masukkan Master Key lisensi (Free / Premium / PRO).</p>
+        <div style="background: var(--card-white); border: 1.5px solid var(--pine-border); border-radius: var(--radius-md); padding: 30px; text-align: center;">
+          <div style="font-size: 32px; font-weight: 800; color: var(--pine-primary); font-family: var(--font-mono); margin-bottom: 12px;">02</div>
+          <h4 style="font-size: 18px; font-weight: 800; margin-bottom: 8px;">Konfirmasi Folder</h4>
+          <p style="font-size: 14px; color: var(--text-muted);">Klik satu tombol konfirmasi pada modal. Folder target langsung terisi otomatis dan checklist sistem menyala hijau.</p>
         </div>
 
-        <div class="step-card">
-          <div class="step-num">3</div>
-          <h4>Pilih Watch Folder</h4>
-          <p>Tentukan folder target tempat software kamera (seperti Canon WFT/Nikon FTP) menyimpan hasil jepretan.</p>
-        </div>
-
-        <div class="step-card">
-          <div class="step-num">4</div>
-          <h4>Start Auto-Sync</h4>
-          <p>Klik tombol Start! Foto secara otomatis akan ter-sync dan terunggah ke platform Fotoyu secara real-time.</p>
+        <div style="background: var(--card-white); border: 1.5px solid var(--pine-border); border-radius: var(--radius-md); padding: 30px; text-align: center;">
+          <div style="font-size: 32px; font-weight: 800; color: var(--pine-primary); font-family: var(--font-mono); margin-bottom: 12px;">03</div>
+          <h4 style="font-size: 18px; font-weight: 800; margin-bottom: 8px;">Jepret & Terunggah</h4>
+          <p style="font-size: 14px; color: var(--text-muted);">Setiap kali Anda menekan tombol rana kamera, foto seketika masuk ke antrean uploader dan terunggah ke Fotoyu!</p>
         </div>
       </div>
     </section>
 
-    <!-- PRICING SECTION -->
-    <section id="harga" style="padding: 40px 0;">
-      <div class="section-title-wrapper">
-        <span class="section-subtitle">PAKET & LISENSI</span>
-        <h2 class="section-title">Pilih Paket Langganan Sesuai Kebutuhan Event Anda</h2>
-      </div>
+    <!-- LICENSE VERIFICATION SECTION -->
+    <section id="cek-lisensi" class="license-verify-section">
+      <span class="section-tag">Verifikasi Lisensi</span>
+      <h3 style="font-size: 26px; font-weight: 800; margin-top: 10px; color: var(--text-main);">Cek Status & Masa Aktif Master Key Anda</h3>
+      <p style="font-size: 15px; color: var(--text-muted); margin-top: 6px;">Masukkan kode lisensi untuk memeriksa masa aktif, sisa kuota, dan status perangkat terikat.</p>
 
-      <div class="pricing-grid">
-        <!-- PAKET 1 HARI -->
-        <div class="price-card">
-          <div class="plan-title">PAKET 1 HARI</div>
-          <div class="plan-price">Rp 25.000 <small>/ 24 jam</small></div>
-          <ul class="plan-features">
-            <li>⏱️ Masa Aktif <strong>1 Hari (24 Jam)</strong></li>
-            <li>🚀 Kuota <strong>UNLIMITED Foto</strong></li>
-            <li>⚡ 5 Worker High-Speed Sync</li>
-            <li>🔒 Terikat 1 Device HWID</li>
-            <li>🎯 Cocok untuk Single Day Event</li>
-          </ul>
-          <a href="https://wa.me/628176498254?text=Halo%20Admin%20FotoSync%20PRO,%20saya%20ingin%20berlangganan%20Paket%201%20HARI%20(Rp%2025.000)" target="_blank" class="btn-pricing outline">Order Paket 1 Hari via WA</a>
+      <form id="verifyForm" onsubmit="handleVerifyLicense(event)">
+        <div class="verify-input-group">
+          <input type="text" id="licenseKeyInput" class="verify-input" placeholder="CONTOH: DAY7-FOTOYU-8888-9999" required autocomplete="off">
+          <button type="submit" class="btn-verify" id="btnVerify">Periksa Lisensi</button>
         </div>
+      </form>
 
-        <!-- PAKET 7 HARI -->
-        <div class="price-card popular">
-          <div class="badge-popular">POPULER FOR EVENT</div>
-          <div class="plan-title">PAKET 7 HARI</div>
-          <div class="plan-price">Rp 50.000 <small>/ 7 hari</small></div>
-          <ul class="plan-features">
-            <li>⏱️ Masa Aktif <strong>7 Hari (1 Minggu)</strong></li>
-            <li>🚀 Kuota <strong>UNLIMITED Foto</strong></li>
-            <li>⚡ 8 Worker High-Speed Sync</li>
-            <li>🔒 Terikat 1 Device HWID</li>
-            <li>⭐ Cocok untuk Trip & Festival</li>
-            <li>💬 Support Admin Dedicated</li>
-          </ul>
-          <a href="https://wa.me/628176498254?text=Halo%20Admin%20FotoSync%20PRO,%20saya%20ingin%20berlangganan%20Paket%207%20HARI%20(Rp%2050.000)" target="_blank" class="btn-pricing cyan">Order Paket 7 Hari via WA</a>
-        </div>
-
-        <!-- PAKET 30 HARI -->
-        <div class="price-card">
-          <div class="plan-title">PAKET 30 HARI</div>
-          <div class="plan-price">Rp 110.000 <small>/ 30 hari</small></div>
-          <ul class="plan-features">
-            <li>⏱️ Masa Aktif <strong>30 Hari (1 Bulan)</strong></li>
-            <li>👑 Kuota <strong>UNLIMITED Foto</strong></li>
-            <li>⚡ 10 Worker Parallel Sync</li>
-            <li>🔒 Terikat 1 Device HWID</li>
-            <li>👑 Prioritas Utama Server</li>
-            <li>💬 Support Langsung 24/7</li>
-          </ul>
-          <a href="https://wa.me/628176498254?text=Halo%20Admin%20FotoSync%20PRO,%20saya%20ingin%20berlangganan%20Paket%2030%20HARI%20(Rp%20110.000)" target="_blank" class="btn-pricing outline">Order Paket 30 Hari via WA</a>
-        </div>
-      </div>
+      <div id="verifyResult" class="verify-result-box"></div>
     </section>
 
   </main>
 
   <!-- FOOTER -->
   <footer class="footer">
-    <div class="container">
-      <p style="margin-bottom: 8px; font-weight: 800; color: var(--navy-darker);">FotoSync PRO Enterprise Suite v<?= htmlspecialchars($versionData['latest_version']) ?></p>
-      <p style="margin-bottom: 6px;">WhatsApp Admin: <a href="https://wa.me/628176498254" target="_blank">08176498254</a> &bull; Email: <a href="mailto:r00t@ghazabegins.id">r00t@ghazabegins.id</a></p>
-      <p>Developed by <a href="https://ghazabegins.id/" target="_blank" rel="noopener noreferrer">ghazabegins.id</a> &bull; All Rights Reserved.</p>
+    <div class="container footer-inner">
+      <div class="footer-brand">
+        <img src="assets/logo.png" alt="Logo">
+        <span>FotoSync PRO</span>
+      </div>
+
+      <div class="footer-copy">
+        &copy; <?= date('Y') ?> Fotoyu Auto Uploader Ecosystem. Built for Professional Event Photographers.
+      </div>
+
+      <ul class="footer-links">
+        <li><a href="admin/index.php">Portal Admin</a></li>
+        <li><a href="https://github.com/ghazabegins/fotoyu-auto-uploader" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://wa.me/6281234567890?text=Halo%20Admin%20FotoSync" target="_blank" rel="noopener">Bantuan WhatsApp</a></li>
+      </ul>
     </div>
   </footer>
 
+  <!-- JAVASCRIPT DEVICE DETECTION & SMART DOWNLOAD LOGIC -->
+  <script>
+    const WIN_DOWNLOAD_URL = <?= json_encode($versionData['windows_download_url']) ?>;
+    const MAC_ARM_DOWNLOAD_URL = <?= json_encode($versionData['mac_download_url']) ?>;
+    const MAC_INTEL_DOWNLOAD_URL = <?= json_encode($versionData['mac_intel_download_url'] ?? $defaultMacIntel) ?>;
+    const APP_VERSION = <?= json_encode($versionData['latest_version']) ?>;
+
+    function detectDeviceOS() {
+      const ua = (navigator.userAgent || navigator.vendor || window.opera || '').toLowerCase();
+      const platform = (navigator.platform || '').toLowerCase();
+
+      const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(ua) || 
+                       (window.innerWidth <= 768 && ('ontouchstart' in window));
+      const isMac = (platform.includes('mac') || ua.includes('macintosh')) && !isMobile;
+      const isWindows = (platform.includes('win') || ua.includes('windows')) && !isMobile;
+
+      return { isMobile, isMac, isWindows };
+    }
+
+    function setupSmartDownloadButtons() {
+      const { isMobile, isMac, isWindows } = detectDeviceOS();
+      const badge = document.getElementById('deviceBadge');
+      const primaryArea = document.getElementById('primaryDownloadArea');
+      const secondaryArea = document.getElementById('secondaryDownloadArea');
+      const macChipSelector = document.getElementById('macChipSelector');
+
+      if (isMobile) {
+        // MOBILE DISPLAY: Show BOTH Windows and Mac buttons clearly side-by-side!
+        badge.innerHTML = '📱 Dibuka dari Smartphone / Tablet';
+        macChipSelector.style.display = 'none';
+
+        primaryArea.innerHTML = `
+          <div style="font-size: 15px; font-weight: 700; margin-bottom: 12px; color: var(--pine-primary);">
+            Pilih Versi untuk Komputer / Laptop Anda:
+          </div>
+          <div class="dual-download-grid">
+            <a href="${WIN_DOWNLOAD_URL}" class="os-card-btn active-target">
+              <div class="os-icon">🪟</div>
+              <div class="os-info">
+                <h4>Unduh Windows (.exe)</h4>
+                <div class="os-meta">Versi ${APP_VERSION} • ~65 MB</div>
+              </div>
+            </a>
+            <a href="${MAC_ARM_DOWNLOAD_URL}" class="os-card-btn active-target">
+              <div class="os-icon">🍏</div>
+              <div class="os-info">
+                <h4>Unduh macOS (.dmg)</h4>
+                <div class="os-meta">Versi ${APP_VERSION} • ~75 MB</div>
+              </div>
+            </a>
+          </div>
+        `;
+        secondaryArea.innerHTML = `
+          <div style="font-size: 13px; color: var(--text-dim); margin-top: 10px;">
+            💡 Unduh file installer di atas dan pasang di PC/Laptop fotografer Anda.
+          </div>
+        `;
+      } else if (isMac) {
+        // MAC DISPLAY: Highlight macOS DMG as Primary
+        badge.innerHTML = '🍏 Terdeteksi: Komputer macOS';
+        macChipSelector.style.display = 'flex';
+
+        primaryArea.innerHTML = `
+          <a href="${MAC_ARM_DOWNLOAD_URL}" class="btn-download-primary" id="mainDownloadBtn">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.62-.75 1.04-1.8 0.92-2.85-.9.04-2 .6-2.65 1.35-.58.66-1.09 1.73-.95 2.76 1.01.08 2.05-.51 2.68-1.26z"/></svg>
+            <span>Unduh untuk macOS v${APP_VERSION} (.dmg)</span>
+          </a>
+        `;
+
+        secondaryArea.innerHTML = `
+          <div style="margin-top: 14px;">
+            <a href="${WIN_DOWNLOAD_URL}" class="btn-download-secondary">
+              <span>🪟 Unduh Versi Windows (.exe)</span>
+            </a>
+          </div>
+          <div style="font-size: 12px; color: var(--text-dim); margin-top: 8px;">
+            ✨ Di dalam DMG sudah disertakan <code>panduan.txt</code> & launcher 1-klik untuk kemudahan izin keamanan Apple.
+          </div>
+        `;
+      } else {
+        // WINDOWS (OR DEFAULT DESKTOP): Highlight Windows EXE as Primary
+        badge.innerHTML = '🪟 Terdeteksi: Komputer Windows';
+        macChipSelector.style.display = 'none';
+
+        primaryArea.innerHTML = `
+          <a href="${WIN_DOWNLOAD_URL}" class="btn-download-primary" id="mainDownloadBtn">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.901-1.799"/></svg>
+            <span>Unduh untuk Windows v${APP_VERSION} (.exe)</span>
+          </a>
+        `;
+
+        secondaryArea.innerHTML = `
+          <div style="margin-top: 14px;">
+            <a href="${MAC_ARM_DOWNLOAD_URL}" class="btn-download-secondary">
+              <span>🍏 Unduh Versi macOS (.dmg)</span>
+            </a>
+          </div>
+        `;
+      }
+    }
+
+    function toggleMobileMenu() {
+      const drawer = document.getElementById('mobileDrawer');
+      drawer.style.display = drawer.style.display === 'none' ? 'block' : 'none';
+    }
+
+    async function handleVerifyLicense(e) {
+      e.preventDefault();
+      const input = document.getElementById('licenseKeyInput');
+      const btn = document.getElementById('btnVerify');
+      const resultBox = document.getElementById('verifyResult');
+      const key = input.value.trim().toUpperCase();
+
+      if (!key) return;
+
+      btn.disabled = true;
+      btn.textContent = 'Memeriksa...';
+      resultBox.style.display = 'none';
+
+      try {
+        const res = await fetch(`api/check.php?license_key=${encodeURIComponent(key)}`);
+        const data = await res.json();
+
+        resultBox.style.display = 'block';
+        if (data.success && data.valid) {
+          resultBox.style.background = '#E8F5E9';
+          resultBox.style.border = '1px solid #A5D6A7';
+          resultBox.style.color = '#2E7D32';
+          resultBox.innerHTML = `
+            <strong>✅ Lisensi Valid & Aktif!</strong><br>
+            Paket: <strong>${data.plan_tier || 'PRO'}</strong> | Sisa Masa Aktif: <strong>${data.remaining_days || 'Lifetime'}</strong><br>
+            Status Kuota: <strong>${data.daily_limit ? data.daily_limit + ' Foto/Hari' : 'UNLIMITED'}</strong>
+          `;
+        } else {
+          resultBox.style.background = '#FFEBEE';
+          resultBox.style.border = '1px solid #FFCDD2';
+          resultBox.style.color = '#C62828';
+          resultBox.innerHTML = `<strong>❌ Lisensi Tidak Valid atau Telah Kedaluwarsa</strong><br>${data.message || 'Periksa kembali kode master key Anda.'}`;
+        }
+      } catch (err) {
+        resultBox.style.display = 'block';
+        resultBox.style.background = '#FFF3E0';
+        resultBox.style.border = '1px solid #FFE0B2';
+        resultBox.style.color = '#E65100';
+        resultBox.innerHTML = `<strong>⚠️ Gagal menghubungi server lisensi.</strong> Pastikan koneksi internet stabil.`;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Periksa Lisensi';
+      }
+    }
+
+    // Run smart device detector on page load
+    document.addEventListener('DOMContentLoaded', setupSmartDownloadButtons);
+  </script>
 </body>
 </html>

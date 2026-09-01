@@ -2,28 +2,39 @@
 session_start();
 require_once __DIR__ . '/../config.php';
 
-$pdo = getDBConnection();
-ensureAdminUsersTable($pdo);
+$pdo = getDBConnection(false);
+$dbOffline = ($pdo === null);
 
-// Login Session Check (Database Driven with Username + Password)
+if ($pdo) {
+    ensureAdminUsersTable($pdo);
+}
+
+// Login Session Check (Database Driven with Username + Password + Role)
 if (isset($_POST['admin_pass'])) {
     $userIn = trim($_POST['admin_user'] ?? 'admin');
     $passIn = trim($_POST['admin_pass'] ?? '');
 
-    $stmt = $pdo->prepare("SELECT * FROM admin_users WHERE username = ?");
-    $stmt->execute([$userIn]);
-    $userRow = $stmt->fetch();
+    $userRow = null;
+    if ($pdo) {
+        $stmt = $pdo->prepare("SELECT * FROM admin_users WHERE username = ?");
+        $stmt->execute([$userIn]);
+        $userRow = $stmt->fetch();
+    }
 
     if ($userRow && password_verify($passIn, $userRow['password_hash'])) {
         $_SESSION['admin_auth'] = true;
+        $_SESSION['admin_id'] = $userRow['id'];
         $_SESSION['admin_username'] = $userRow['username'];
         $_SESSION['admin_name'] = $userRow['name'];
+        $_SESSION['admin_role'] = $userRow['role'] ?? 'admin';
         header('Location: index.php');
         exit;
     } else if (($userIn === 'admin' || empty($userIn)) && $passIn === ADMIN_PASSWORD) {
         $_SESSION['admin_auth'] = true;
+        $_SESSION['admin_id'] = 1;
         $_SESSION['admin_username'] = 'admin';
         $_SESSION['admin_name'] = 'Super Administrator';
+        $_SESSION['admin_role'] = 'admin';
         header('Location: index.php');
         exit;
     } else {
@@ -33,8 +44,10 @@ if (isset($_POST['admin_pass'])) {
 
 if (isset($_GET['logout'])) {
     unset($_SESSION['admin_auth']);
+    unset($_SESSION['admin_id']);
     unset($_SESSION['admin_username']);
     unset($_SESSION['admin_name']);
+    unset($_SESSION['admin_role']);
     header('Location: index.php');
     exit;
 }
@@ -42,13 +55,15 @@ if (isset($_GET['logout'])) {
 $isLoggedIn = isset($_SESSION['admin_auth']) && $_SESSION['admin_auth'] === true;
 $currentTab = $_GET['tab'] ?? 'licenses';
 $adminDisplayName = $_SESSION['admin_name'] ?? 'Administrator Server';
+$adminUsername = $_SESSION['admin_username'] ?? 'admin';
+$adminRole = getCurrentUserRole();
 
 // Action Handlers
 if ($isLoggedIn) {
     if (isset($_POST['action'])) {
         $act = $_POST['action'];
 
-        // 1. Generate New License
+        // 1. Generate New License (Admin & Staff)
         if ($act === 'generate') {
             $buyerName = trim($_POST['buyer_name'] ?? 'Member');
             $buyerPhone = trim($_POST['buyer_phone'] ?? '');
@@ -94,17 +109,17 @@ if ($isLoggedIn) {
 
             $durText = $durationDays == 0 ? "Lifetime (Selamanya)" : "{$durationDays} Hari";
             $planLabel = strtoupper($planTier);
-            $success_msg = "🎉 Master Key [{$planLabel}] Berhasil Dibuat: <strong style='font-family: var(--font-mono); color: var(--primary-blue-dark);'>{$newKey}</strong> (Masa Aktif: {$durText}, Kuota: UNLIMITED Foto)";
+            $success_msg = "🎉 Master Key [{$planLabel}] Berhasil Dibuat: <strong style='font-family: var(--font-mono); color: var(--pine-primary);'>{$newKey}</strong> (Masa Aktif: {$durText}, Kuota: UNLIMITED Foto)";
         }
 
-        // 2. Unbind Device HWID
+        // 2. Unbind Device HWID (Admin & Staff)
         if ($act === 'unbind' && !empty($_POST['license_id'])) {
             $stmt = $pdo->prepare("UPDATE licenses SET hwid = NULL, status = 'active' WHERE id = ?");
             $stmt->execute([$_POST['license_id']]);
             $success_msg = "Device HWID berhasil di-reset (Unbind). Member kini dapat mengaktifkan lisensi di komputer/laptop baru.";
         }
 
-        // 3. Extend Duration
+        // 3. Extend Duration (Admin & Staff)
         if ($act === 'extend' && !empty($_POST['license_id'])) {
             $licId = (int)$_POST['license_id'];
             $addDays = (int)($_POST['extend_days'] ?? 30);
@@ -115,7 +130,6 @@ if ($isLoggedIn) {
 
             if ($lic) {
                 if ($addDays == 0) {
-                    // Convert to Lifetime
                     $updateStmt = $pdo->prepare("UPDATE licenses SET duration_days = 0, expires_at = NULL, status = IF(hwid IS NULL, 'active', 'used') WHERE id = ?");
                     $updateStmt->execute([$licId]);
                     $success_msg = "Durasi Lisensi #{$licId} berhasil diubah menjadi <strong>LIFETIME (Permanen)</strong>.";
@@ -135,137 +149,201 @@ if ($isLoggedIn) {
             }
         }
 
-        // 4. Revoke / Block License
+        // 4. Revoke / Block License (Admin & Staff)
         if ($act === 'revoke' && !empty($_POST['license_id'])) {
             $stmt = $pdo->prepare("UPDATE licenses SET status = 'revoked' WHERE id = ?");
             $stmt->execute([$_POST['license_id']]);
             $warn_msg = "Lisensi ID #{$_POST['license_id']} telah DIBLOKIR (Revoked).";
         }
 
-        // 5. Reactivate / Unblock License
+        // 5. Reactivate / Unblock License (Admin & Staff)
         if ($act === 'reactivate' && !empty($_POST['license_id'])) {
             $stmt = $pdo->prepare("UPDATE licenses SET status = IF(hwid IS NULL, 'active', 'used') WHERE id = ?");
             $stmt->execute([$_POST['license_id']]);
             $success_msg = "Lisensi ID #{$_POST['license_id']} berhasil diaktifkan kembali.";
         }
 
-        // 6. Delete License
+        // 6. Delete License (Admin Only)
         if ($act === 'delete' && !empty($_POST['license_id'])) {
-            $stmt = $pdo->prepare("DELETE FROM licenses WHERE id = ?");
-            $stmt->execute([$_POST['license_id']]);
-            $warn_msg = "Lisensi ID #{$_POST['license_id']} telah dihapus dari database.";
+            if (isAdmin()) {
+                $stmt = $pdo->prepare("DELETE FROM licenses WHERE id = ?");
+                $stmt->execute([$_POST['license_id']]);
+                $warn_msg = "Lisensi ID #{$_POST['license_id']} telah dihapus dari database.";
+            } else {
+                $error_msg = "⛔ Hak Akses Ditolak: Hanya Administrator yang berhak menghapus lisensi.";
+            }
         }
 
-        // 7. Update App Version Config (Multi-Platform Windows & macOS)
+        // 7. Update App Version Config (Admin Only)
         if ($act === 'save_version') {
-            $latestVer = trim($_POST['latest_version'] ?? '1.0.0');
-            $minReqVer = trim($_POST['min_required_version'] ?? '1.0.0');
-            $winDownloadUrl = trim($_POST['windows_download_url'] ?? $_POST['download_url'] ?? '');
-            $macDownloadUrl = trim($_POST['mac_download_url'] ?? '');
-            $releaseNotes = trim($_POST['release_notes'] ?? '');
-            $isMandatory = isset($_POST['is_mandatory']) && $_POST['is_mandatory'] == '1';
+            if (isAdmin()) {
+                $latestVer = trim($_POST['latest_version'] ?? '1.3.0');
+                $minReqVer = trim($_POST['min_required_version'] ?? '1.0.0');
+                $winDownloadUrl = trim($_POST['windows_download_url'] ?? $_POST['download_url'] ?? '');
+                $macDownloadUrl = trim($_POST['mac_download_url'] ?? '');
+                $releaseNotes = trim($_POST['release_notes'] ?? '');
+                $isMandatory = isset($_POST['is_mandatory']) && $_POST['is_mandatory'] == '1';
 
-            if (empty($macDownloadUrl) && !empty($winDownloadUrl)) {
-                $macDownloadUrl = str_replace('.exe', '.dmg', $winDownloadUrl);
+                $versionData = [
+                    'success' => true,
+                    'latest_version' => $latestVer,
+                    'min_required_version' => $minReqVer,
+                    'download_url' => $winDownloadUrl,
+                    'windows_download_url' => $winDownloadUrl,
+                    'mac_download_url' => $macDownloadUrl,
+                    'release_notes' => $releaseNotes,
+                    'is_mandatory' => $isMandatory,
+                    'updated_at' => date('Y-m-d H:i:s')
+                ];
+
+                $configDir = __DIR__ . '/../data';
+                if (!is_dir($configDir)) {
+                    @mkdir($configDir, 0777, true);
+                }
+                file_put_contents($configDir . '/version_config.json', json_encode($versionData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+                $success_msg = "🚀 Pengaturan Versi Multi-Platform Berhasil Diperbarui ke <strong>v{$latestVer}</strong>!";
+            } else {
+                $error_msg = "⛔ Hak Akses Ditolak: Hanya Administrator yang berhak mengubah versi software.";
             }
-
-            $versionData = [
-                'success' => true,
-                'latest_version' => $latestVer,
-                'min_required_version' => $minReqVer,
-                'download_url' => $winDownloadUrl,
-                'windows_download_url' => $winDownloadUrl,
-                'mac_download_url' => $macDownloadUrl,
-                'release_notes' => $releaseNotes,
-                'is_mandatory' => $isMandatory,
-                'updated_at' => date('Y-m-d H:i:s')
-            ];
-
-            $configDir = __DIR__ . '/../data';
-            if (!is_dir($configDir)) {
-                @mkdir($configDir, 0777, true);
-            }
-            file_put_contents($configDir . '/version_config.json', json_encode($versionData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
-
-            $success_msg = "🚀 Pengaturan Versi Multi-Platform (Windows & macOS) Berhasil Diperbarui ke <strong>v{$latestVer}</strong>!";
         }
 
-        // 8. Clear Telemetry Logs
+        // 8. Clear Telemetry Logs (Admin Only)
         if ($act === 'clear_logs') {
-            ensureTelemetryLogsTable($pdo);
-            $pdo->exec("TRUNCATE TABLE telemetry_logs");
-            $success_msg = "🧹 Seluruh Riwayat Server Telemetry Log Berhasil Dibersihkan!";
-        }
-    }
-
-    // Read Current App Version Config
-    $versionConfigFile = __DIR__ . '/../data/version_config.json';
-    $defaultWin = 'http://localhost/photoculler/SOFTWARE%20FOTOYU%20UPLOADER/downloads/FotoSync-Setup-Latest.exe';
-    $defaultMac = 'http://localhost/photoculler/SOFTWARE%20FOTOYU%20UPLOADER/downloads/FotoSync-Setup-Latest.dmg';
-    $versionConfig = [
-        'latest_version' => '1.0.0',
-        'min_required_version' => '1.0.0',
-        'download_url' => $defaultWin,
-        'windows_download_url' => $defaultWin,
-        'mac_download_url' => $defaultMac,
-        'release_notes' => "• Penambahan sistem kuota 3 tier (Free 20, Premium 500, Pro Unlimited)\n• Integrasi Kontak Admin WhatsApp Official\n• Peningkatan sistem auto-sync & penanganan kuota harian real-time",
-        'is_mandatory' => false
-    ];
-    if (file_exists($versionConfigFile)) {
-        $loadedVer = json_decode(file_get_contents($versionConfigFile), true);
-        if ($loadedVer && is_array($loadedVer)) {
-            $versionConfig = array_merge($versionConfig, $loadedVer);
-            if (empty($versionConfig['windows_download_url']) && !empty($versionConfig['download_url'])) {
-                $versionConfig['windows_download_url'] = $versionConfig['download_url'];
-            }
-            if (empty($versionConfig['mac_download_url'])) {
-                $versionConfig['mac_download_url'] = str_replace('.exe', '.dmg', $versionConfig['windows_download_url']);
+            if (isAdmin()) {
+                ensureTelemetryLogsTable($pdo);
+                $pdo->exec("TRUNCATE TABLE telemetry_logs");
+                $success_msg = "🧹 Seluruh Riwayat Server Telemetry Log Berhasil Dibersihkan!";
+            } else {
+                $error_msg = "⛔ Hak Akses Ditolak: Hanya Administrator yang berhak menghapus log telemetry.";
             }
         }
-    }
 
-    // Read Telemetry Logs if on telemetry tab
-    $telemetryLogs = [];
-    $telemetryStats = ['total' => 0, 'success' => 0, 'warning' => 0, 'error' => 0];
-    if ($currentTab === 'telemetry') {
-        ensureTelemetryLogsTable($pdo);
-        $telemetryLogs = $pdo->query("SELECT * FROM telemetry_logs ORDER BY id DESC LIMIT 250")->fetchAll();
-        $telemetryStats['total'] = count($telemetryLogs);
-        foreach ($telemetryLogs as $logItem) {
-            if ($logItem['status'] === 'SUCCESS') $telemetryStats['success']++;
-            else if ($logItem['status'] === 'WARNING') $telemetryStats['warning']++;
-            else if ($logItem['status'] === 'ERROR') $telemetryStats['error']++;
-        }
-    }
-
-    // Fetch All Licenses
-    $licensesRaw = $pdo->query("SELECT * FROM licenses ORDER BY id DESC")->fetchAll();
-    $licenses = [];
-
-    $stats = [
-        'total' => count($licensesRaw),
-        'active' => 0,
-        'used' => 0,
-        'expired' => 0,
-        'revoked' => 0
-    ];
-
-    foreach ($licensesRaw as $lic) {
-        $expMeta = calculateLicenseExpiration($lic['activated_at'], $lic['duration_days'], $lic['expires_at']);
-        
-        $computedStatus = $lic['status'];
-        if ($lic['status'] !== 'revoked' && $expMeta['is_expired']) {
-            $computedStatus = 'expired';
+        // 9. Update Self Profile Name (Admin & Staff)
+        if ($act === 'update_profile') {
+            $newName = trim($_POST['display_name'] ?? '');
+            if (!empty($newName) && !empty($_SESSION['admin_username'])) {
+                $stmt = $pdo->prepare("UPDATE admin_users SET name = ? WHERE username = ?");
+                $stmt->execute([$newName, $_SESSION['admin_username']]);
+                $_SESSION['admin_name'] = $newName;
+                $success_msg = "Nama profil berhasil diperbarui menjadi <strong>" . htmlspecialchars($newName) . "</strong>!";
+            } else {
+                $error_msg = "Nama profil tidak boleh kosong.";
+            }
         }
 
-        if ($computedStatus === 'active') $stats['active']++;
-        else if ($computedStatus === 'used') $stats['used']++;
-        else if ($computedStatus === 'expired') $stats['expired']++;
-        else if ($computedStatus === 'revoked') $stats['revoked']++;
+        // 10. Change Password (Admin & Staff)
+        if ($act === 'change_password') {
+            $oldPass = trim($_POST['current_password'] ?? '');
+            $newPass = trim($_POST['new_password'] ?? '');
+            $confirmPass = trim($_POST['confirm_password'] ?? '');
 
-        $lic['computed_status'] = $computedStatus;
-        $lic['exp_meta'] = $expMeta;
-        $licenses[] = $lic;
+            if (strlen($newPass) < 6) {
+                $error_msg = "Kata sandi baru minimal harus 6 karakter!";
+            } else if ($newPass !== $confirmPass) {
+                $error_msg = "Konfirmasi kata sandi baru tidak cocok!";
+            } else {
+                $stmt = $pdo->prepare("SELECT * FROM admin_users WHERE username = ?");
+                $stmt->execute([$_SESSION['admin_username']]);
+                $currUser = $stmt->fetch();
+
+                if ($currUser && (password_verify($oldPass, $currUser['password_hash']) || ($oldPass === ADMIN_PASSWORD && $_SESSION['admin_username'] === 'admin'))) {
+                    $newHash = password_hash($newPass, PASSWORD_BCRYPT);
+                    $update = $pdo->prepare("UPDATE admin_users SET password_hash = ? WHERE username = ?");
+                    $update->execute([$newHash, $_SESSION['admin_username']]);
+                    $success_msg = "🔒 Kata sandi Anda berhasil diperbarui!";
+                } else {
+                    $error_msg = "Kata sandi saat ini (lama) salah!";
+                }
+            }
+        }
+
+        // 11. Create New User (Admin Only)
+        if ($act === 'create_user') {
+            if (isAdmin()) {
+                $newUsername = strtolower(trim($_POST['new_username'] ?? ''));
+                $newName = trim($_POST['new_name'] ?? '');
+                $newPassword = trim($_POST['new_password'] ?? '');
+                $newRole = in_array($_POST['new_role'] ?? '', ['admin', 'staff']) ? $_POST['new_role'] : 'staff';
+
+                if (empty($newUsername) || empty($newPassword)) {
+                    $error_msg = "Username dan Kata Sandi wajib diisi!";
+                } else if (strlen($newPassword) < 6) {
+                    $error_msg = "Kata sandi minimal 6 karakter!";
+                } else {
+                    $check = $pdo->prepare("SELECT COUNT(*) FROM admin_users WHERE username = ?");
+                    $check->execute([$newUsername]);
+                    if ($check->fetchColumn() > 0) {
+                        $error_msg = "Username <strong>" . htmlspecialchars($newUsername) . "</strong> sudah digunakan!";
+                    } else {
+                        $passHash = password_hash($newPassword, PASSWORD_BCRYPT);
+                        $stmt = $pdo->prepare("INSERT INTO admin_users (username, password_hash, name, role) VALUES (?, ?, ?, ?)");
+                        $stmt->execute([$newUsername, $passHash, $newName ?: ucfirst($newUsername), $newRole]);
+                        $success_msg = "🎉 Pengguna baru <strong>" . htmlspecialchars($newUsername) . "</strong> (Role: " . strtoupper($newRole) . ") berhasil dibuat!";
+                    }
+                }
+            } else {
+                $error_msg = "⛔ Hak Akses Ditolak: Hanya Administrator yang berhak membuat user baru.";
+            }
+        }
+
+        // 12. Edit Existing User (Admin Only)
+        if ($act === 'edit_user') {
+            if (isAdmin()) {
+                $targetId = (int)($_POST['user_id'] ?? 0);
+                $newName = trim($_POST['edit_name'] ?? '');
+                $newRole = in_array($_POST['edit_role'] ?? '', ['admin', 'staff']) ? $_POST['edit_role'] : 'staff';
+                $resetPass = trim($_POST['reset_password'] ?? '');
+
+                if ($targetId == ($_SESSION['admin_id'] ?? 0) && $newRole !== 'admin') {
+                    $error_msg = "Anda tidak dapat menurunkan role akun Anda sendiri menjadi Staff!";
+                } else {
+                    if (!empty($resetPass)) {
+                        if (strlen($resetPass) < 6) {
+                            $error_msg = "Password reset minimal 6 karakter!";
+                        } else {
+                            $passHash = password_hash($resetPass, PASSWORD_BCRYPT);
+                            $stmt = $pdo->prepare("UPDATE admin_users SET name = ?, role = ?, password_hash = ? WHERE id = ?");
+                            $stmt->execute([$newName, $newRole, $passHash, $targetId]);
+                            $success_msg = "Pengguna ID #{$targetId} dan kata sandi berhasil diperbarui!";
+                        }
+                    } else {
+                        $stmt = $pdo->prepare("UPDATE admin_users SET name = ?, role = ? WHERE id = ?");
+                        $stmt->execute([$newName, $newRole, $targetId]);
+                        $success_msg = "Pengguna ID #{$targetId} berhasil diperbarui!";
+                    }
+                }
+            } else {
+                $error_msg = "⛔ Hak Akses Ditolak: Hanya Administrator yang berhak mengubah data user.";
+            }
+        }
+
+        // 13. Delete User (Admin Only)
+        if ($act === 'delete_user') {
+            if (isAdmin()) {
+                $targetId = (int)($_POST['user_id'] ?? 0);
+                $targetUsername = trim($_POST['target_username'] ?? '');
+
+                if ($targetId == ($_SESSION['admin_id'] ?? 0) || $targetUsername === $_SESSION['admin_username']) {
+                    $error_msg = "Anda tidak dapat menghapus akun yang sedang Anda gunakan saat ini!";
+                } else {
+                    // Check if it's the last admin
+                    $adminCount = (int)$pdo->query("SELECT COUNT(*) FROM admin_users WHERE role = 'admin'")->fetchColumn();
+                    $stmtCheck = $pdo->prepare("SELECT role FROM admin_users WHERE id = ?");
+                    $stmtCheck->execute([$targetId]);
+                    $targetRole = $stmtCheck->fetchColumn();
+
+                    if ($targetRole === 'admin' && $adminCount <= 1) {
+                        $error_msg = "Tidak dapat menghapus Administrator terakhir di sistem!";
+                    } else {
+                        $stmt = $pdo->prepare("DELETE FROM admin_users WHERE id = ?");
+                        $stmt->execute([$targetId]);
+                        $warn_msg = "Pengguna ID #{$targetId} (@{$targetUsername}) telah dihapus dari sistem.";
+                    }
+                }
+            } else {
+                $error_msg = "⛔ Hak Akses Ditolak: Hanya Administrator yang berhak menghapus user.";
+            }
+        }
     }
 }
 ?>
@@ -274,1010 +352,1457 @@ if ($isLoggedIn) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FotoSync PRO — Enterprise Admin Suite</title>
-  <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+  <title>Portal Admin FotoSync PRO — Manajemen Lisensi & Pengguna</title>
+  <link rel="icon" type="image/png" href="../assets/logo.png">
+  
+  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="icon" type="image/png" href="../assets/logo.png">
-  <link rel="shortcut icon" type="image/png" href="../assets/logo.png">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   
   <style>
-    /* ENTERPRISE DESIGN SYSTEM */
+    /* DESIGN SYSTEM: PINE TEAL (#004643) & WARM CREAM (#F0EDE5) */
     :root {
-      --bg-body: #f8fafc;
-      --bg-sidebar: #0f172a;
-      --bg-sidebar-hover: #1e293b;
-      --bg-sidebar-active: rgba(59, 130, 246, 0.15);
-      --bg-card: #ffffff;
-      --bg-card-sub: #f1f5f9;
-      --bg-input: #ffffff;
-
-      --primary-blue: #2563eb;
-      --primary-blue-dark: #1d4ed8;
-      --primary-blue-light: #eff6ff;
-      --navy-dark: #1e293b;
-      --navy-darker: #0f172a;
-
-      --emerald-success: #10b981;
-      --amber-warning: #f59e0b;
-      --rose-error: #ef4444;
-
-      --text-main: #0f172a;
-      --text-muted: #64748b;
-      --text-dim: #94a3b8;
-      --text-white: #f8fafc;
-
-      --border-subtle: #e2e8f0;
-      --border-card: #e5e7eb;
+      --pine-primary: #004643;
+      --pine-hover: #003634;
+      --pine-deep: #002221;
+      --pine-surface: rgba(0, 70, 67, 0.08);
+      --pine-border: rgba(0, 70, 67, 0.16);
+      --pine-glow: rgba(0, 70, 67, 0.25);
       
-      --shadow-subtle: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-      --shadow-card: 0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.02);
-      --shadow-elevated: 0 12px 30px -4px rgba(15, 23, 42, 0.08);
+      --cream-bg: #F0EDE5;
+      --cream-surface: #FAF8F5;
+      --card-white: #FFFFFF;
+      
+      --text-main: #0B2422;
+      --text-muted: #4A6360;
+      --text-dim: #7C9491;
+      
+      --accent-mint: #ABD1C6;
+      --accent-gold: #F9BC60;
+      --accent-danger: #E16162;
+      --accent-success: #2A9D8F;
 
+      --shadow-sm: 0 2px 8px rgba(0, 70, 67, 0.05);
+      --shadow-md: 0 8px 24px -4px rgba(0, 70, 67, 0.08);
+      --shadow-lg: 0 16px 36px -6px rgba(0, 70, 67, 0.12);
+      
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+      --radius-full: 9999px;
+      
       --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
       --font-mono: 'JetBrains Mono', monospace;
     }
 
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { 
-      font-family: var(--font-sans); 
-      background-color: var(--bg-body); 
-      color: var(--text-main); 
-      min-height: 100vh; 
-      overflow-x: hidden; 
-      -webkit-font-smoothing: antialiased;
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--cream-bg);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
     }
 
-    /* STANDALONE PURE LOGIN PAGE STYLING */
+    /* LOGIN PAGE STYLES */
     .login-wrapper {
+      width: 100%;
       min-height: 100vh;
-      width: 100vw;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: radial-gradient(circle at top right, #1e293b 0%, #0f172a 100%);
-      padding: 20px;
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      z-index: 99999;
+      padding: 24px;
+      background: radial-gradient(circle at top, rgba(0, 70, 67, 0.12) 0%, rgba(240, 237, 229, 1) 70%);
     }
     .login-card {
-      background: #ffffff;
-      border-radius: 24px;
-      padding: 40px 36px;
-      width: 100%;
+      background: var(--card-white);
+      border: 1.5px solid var(--pine-border);
+      border-radius: var(--radius-lg);
+      padding: 42px 36px;
       max-width: 440px;
-      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1);
-      animation: loginFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    @keyframes loginFadeIn {
-      from { opacity: 0; transform: translateY(14px) scale(0.97); }
-      to { opacity: 1; transform: translateY(0) scale(1); }
-    }
-    .login-header {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+      width: 100%;
+      box-shadow: var(--shadow-lg);
       text-align: center;
-      margin-bottom: 28px;
     }
-    .brand-logo-large {
-      width: 58px;
-      height: 58px;
-      border-radius: 16px;
-      background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #ffffff;
-      box-shadow: 0 8px 22px rgba(37, 99, 235, 0.45);
-      margin-bottom: 14px;
+    .login-logo {
+      width: 56px;
+      height: 56px;
+      object-fit: contain;
+      margin-bottom: 16px;
     }
-    .login-header h2 {
-      font-size: 22px;
+    .login-title {
+      font-size: 24px;
       font-weight: 800;
-      color: var(--navy-darker);
+      color: var(--pine-primary);
       letter-spacing: -0.5px;
     }
-    .login-header h2 span {
-      font-size: 11px;
-      background: #eff6ff;
-      color: #2563eb;
-      padding: 3px 8px;
-      border-radius: 8px;
-      font-weight: 800;
-      border: 1px solid #bfdbfe;
-      margin-left: 4px;
-    }
-    .login-header p {
-      font-size: 13px;
-      color: var(--text-muted);
-      margin-top: 4px;
-      font-weight: 500;
-    }
-    .login-form {
-      display: flex;
-      flex-direction: column;
-      gap: 18px;
-    }
-    .input-with-icon {
-      position: relative;
-      display: flex;
-      align-items: center;
-    }
-    .input-with-icon .icon {
-      position: absolute;
-      left: 14px;
-      font-size: 15px;
-      color: var(--text-dim);
-      pointer-events: none;
-    }
-    .input-with-icon input {
-      width: 100%;
-      padding-left: 42px !important;
-      height: 46px;
+    .login-desc {
       font-size: 14px;
-      border-radius: 12px;
+      color: var(--text-muted);
+      margin-top: 6px;
+      margin-bottom: 28px;
+    }
+    .form-group {
+      text-align: left;
+      margin-bottom: 18px;
+    }
+    .form-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 6px;
+    }
+    .input-wrapper {
+      position: relative;
+    }
+    .form-input {
+      width: 100%;
+      height: 46px;
+      padding: 0 14px;
+      border: 1.5px solid var(--pine-border);
+      border-radius: var(--radius-sm);
+      font-family: var(--font-sans);
+      font-size: 14px;
+      background: var(--cream-surface);
+      color: var(--text-main);
+      outline: none;
+      transition: all 0.2s;
+    }
+    .form-input:focus {
+      border-color: var(--pine-primary);
+      background: #fff;
+      box-shadow: 0 0 0 3px var(--pine-glow);
+    }
+    .toggle-pass-btn {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      cursor: pointer;
+      font-size: 16px;
     }
     .btn-login {
-      height: 48px;
-      font-size: 15px;
-      font-weight: 700;
-      margin-top: 6px;
-      border-radius: 12px;
       width: 100%;
+      height: 48px;
+      background: var(--pine-primary);
+      color: var(--cream-bg);
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 15px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 4px 14px var(--pine-glow);
+      transition: all 0.25s ease;
+      margin-top: 10px;
     }
-    .login-footer {
+    .btn-login:hover {
+      background: var(--pine-hover);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 18px var(--pine-glow);
+    }
+    .login-footer-link {
       margin-top: 24px;
-      padding-top: 18px;
-      border-top: 1px solid var(--border-subtle);
-      text-align: center;
-      font-size: 12px;
-      color: var(--text-muted);
-      line-height: 1.5;
+      font-size: 13px;
+      color: var(--text-dim);
     }
-    .login-footer code {
-      font-family: var(--font-mono);
-      background: var(--bg-card-sub);
-      padding: 2px 6px;
-      border-radius: 4px;
-      color: var(--navy-darker);
+    .login-footer-link a {
+      color: var(--pine-primary);
+      font-weight: 700;
+      text-decoration: none;
     }
 
     /* DASHBOARD LAYOUT */
-    .app-layout { display: flex; min-height: 100vh; }
+    .dashboard-layout {
+      display: flex;
+      width: 100%;
+      min-height: 100vh;
+    }
 
-    /* ENTERPRISE DARK SIDEBAR */
+    /* SIDEBAR COMPONENT STYLES */
     .sidebar {
-      width: 270px;
-      flex-shrink: 0;
-      background-color: var(--bg-sidebar);
-      border-right: 1px solid rgba(255, 255, 255, 0.08);
+      width: 280px;
+      background: var(--pine-primary);
+      color: #fff;
       display: flex;
       flex-direction: column;
-      padding: 24px 18px;
-      gap: 24px;
-      color: var(--text-white);
-      box-shadow: 4px 0 24px rgba(0, 0, 0, 0.06);
-      z-index: 10;
+      flex-shrink: 0;
+      border-right: 1px solid rgba(255, 255, 255, 0.1);
       position: sticky;
       top: 0;
       height: 100vh;
       overflow-y: auto;
+      z-index: 100;
+      transition: all 0.3s ease;
+    }
+    .sidebar-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 24px 20px 18px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .brand-info h2 {
+      font-size: 19px;
+      font-weight: 800;
+      color: #fff;
+      line-height: 1.2;
+    }
+    .brand-info h2 span {
+      background: var(--accent-mint);
+      color: var(--pine-deep);
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      vertical-align: middle;
+      font-weight: 800;
+    }
+    .brand-info p {
+      font-size: 11.5px;
+      color: var(--accent-mint);
+      font-weight: 600;
     }
 
-    .sidebar-brand { 
-      display: flex; 
-      align-items: center; 
-      gap: 14px; 
-      padding: 4px 8px; 
+    /* USER SESSION CARD IN SIDEBAR */
+    .user-session-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 16px;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: var(--radius-md);
     }
-    .brand-logo {
-      width: 42px; height: 42px; border-radius: 12px; 
-      background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-      display: flex; align-items: center; justify-content: center; color: #ffffff;
-      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
+    .user-avatar {
+      width: 38px;
+      height: 38px;
+      background: var(--accent-mint);
+      color: var(--pine-deep);
+      font-weight: 800;
+      font-size: 17px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      flex-shrink: 0;
     }
-    .brand-info h2 { font-size: 17px; font-weight: 800; color: #ffffff; line-height: 1.2; letter-spacing: -0.4px; }
-    .brand-info h2 span { 
-      font-size: 10px; background: rgba(59, 130, 246, 0.2); color: #60a5fa; 
-      padding: 2px 6px; border-radius: 6px; margin-left: 4px; font-weight: 700; border: 1px solid rgba(96, 165, 250, 0.3); 
+    .user-name {
+      font-size: 13.5px;
+      font-weight: 800;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 150px;
     }
-    .brand-info p { font-size: 11.5px; color: var(--text-dim); font-weight: 500; margin-top: 2px; }
+    .user-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 3px;
+    }
+    .role-badge {
+      font-size: 10px;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+    .role-admin {
+      background: var(--accent-gold);
+      color: #000;
+    }
+    .role-staff {
+      background: var(--accent-mint);
+      color: var(--pine-deep);
+    }
+    .user-handle {
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.6);
+      font-family: var(--font-mono);
+    }
 
-    .sidebar-nav { display: flex; flex-direction: column; gap: 6px; flex: 1; margin-top: 8px; }
-    .nav-section-label { font-size: 10px; font-weight: 800; color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase; padding: 12px 10px 4px; opacity: 0.7; }
+    .sidebar-nav {
+      flex: 1;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .nav-section-label {
+      font-size: 11px;
+      font-weight: 800;
+      color: rgba(255, 255, 255, 0.45);
+      letter-spacing: 0.8px;
+      padding: 10px 12px 4px 12px;
+      text-transform: uppercase;
+    }
     .nav-item {
-      display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 10px;
-      color: #94a3b8; font-weight: 600; font-size: 13.5px; text-decoration: none; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-      border: 1px solid transparent; background: transparent; cursor: pointer; text-align: left; width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 11px 14px;
+      border-radius: var(--radius-sm);
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s ease;
     }
-    .nav-item svg { stroke-width: 2.2; transition: 0.2s; }
-    .nav-item:hover { background: var(--bg-sidebar-hover); color: #f8fafc; transform: translateX(3px); }
-    .nav-item.active { 
-      background: var(--bg-sidebar-active); 
-      color: #60a5fa; 
-      font-weight: 700; 
-      border: 1px solid rgba(59, 130, 246, 0.3); 
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); 
+    .nav-item:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
     }
-    .nav-item.active svg { stroke: #60a5fa; }
+    .nav-item.active {
+      background: var(--cream-bg);
+      color: var(--pine-primary);
+      font-weight: 800;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    .nav-item.active svg {
+      stroke: var(--pine-primary);
+    }
 
-    .sidebar-footer { padding-top: 16px; border-top: 1px solid rgba(255, 255, 255, 0.08); display: flex; flex-direction: column; gap: 12px; }
-    .status-pill { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 700; color: #34d399; background: rgba(16, 185, 129, 0.12); padding: 8px 12px; border-radius: 20px; border: 1px solid rgba(52, 211, 153, 0.2); }
-    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #34d399; box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.25); animation: pulseDot 2s infinite; }
-
-    @keyframes pulseDot {
-      0% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.5); }
-      70% { box-shadow: 0 0 0 6px rgba(52, 211, 153, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); }
+    .sidebar-footer {
+      padding: 18px 16px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--accent-mint);
+      margin-bottom: 12px;
+      padding: 6px 10px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: var(--radius-sm);
+    }
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      background: var(--accent-success);
+      border-radius: 50%;
+      box-shadow: 0 0 6px rgba(42, 157, 143, 0.8);
+    }
+    .btn-sidebar-logout {
+      width: 100%;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(225, 97, 98, 0.15);
+      border: 1px solid var(--accent-danger);
+      color: #fff;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+    .btn-sidebar-logout:hover {
+      background: var(--accent-danger);
+      color: #fff;
     }
 
     /* MAIN CONTENT AREA */
-    .main-wrapper { flex: 1; display: flex; flex-direction: column; overflow-y: auto; background-color: var(--bg-body); }
-    
-    /* TOP NAVBAR HEADER */
-    .top-header { 
-      background: #ffffff; 
-      border-bottom: 1px solid var(--border-subtle); 
-      padding: 18px 36px; 
-      display: flex; 
-      justify-content: space-between; 
-      align-items: center; 
-      position: sticky; 
-      top: 0; 
-      z-index: 5;
-      box-shadow: var(--shadow-subtle);
+    .content-area {
+      flex: 1;
+      padding: 30px 36px;
+      overflow-y: auto;
+      max-width: calc(100vw - 280px);
     }
-    .header-left-group { display: flex; flex-direction: column; gap: 2px; }
-    .breadcrumb-text { font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 2px; }
-    .top-header h1 { font-size: 21px; font-weight: 800; color: var(--navy-darker); letter-spacing: -0.5px; }
-    .top-header p { font-size: 12.5px; color: var(--text-muted); }
-    
-    .header-right { display: flex; align-items: center; gap: 14px; }
-    .user-profile-badge { 
-      display: flex; align-items: center; gap: 10px;
-      font-size: 12.5px; font-weight: 700; color: var(--navy-dark); 
-      background: var(--bg-body); padding: 8px 16px; border-radius: 30px; 
-      border: 1px solid var(--border-subtle); box-shadow: var(--shadow-subtle);
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 28px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--pine-border);
     }
-    .avatar-circle { width: 26px; height: 26px; border-radius: 50%; background: var(--navy-darker); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; }
+    .page-title {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--pine-primary);
+      letter-spacing: -0.5px;
+    }
+    .page-subtitle {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
 
-    .content-container { padding: 32px 36px; max-width: 1400px; margin: 0 auto; width: 100%; }
-
-    /* METRICS STATS CARDS */
-    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 18px; margin-bottom: 28px; }
-    .stat-card { 
-      background: var(--bg-card); 
-      border: 1px solid var(--border-card); 
-      border-radius: 16px; 
-      padding: 20px 22px; 
-      box-shadow: var(--shadow-card); 
-      display: flex; 
-      flex-direction: column; 
-      gap: 6px; 
-      position: relative;
-      overflow: hidden;
-      transition: all 0.25s ease;
+    /* ALERTS */
+    .alert {
+      padding: 14px 18px;
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 22px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
-    .stat-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-elevated); border-color: #cbd5e1; }
-    .stat-card::before {
-      content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: var(--border-subtle);
+    .alert-success {
+      background: #E8F5E9;
+      border: 1px solid #A5D6A7;
+      color: #2E7D32;
     }
-    .stat-card.total::before { background: linear-gradient(90deg, #64748b, #475569); }
-    .stat-card.active::before { background: linear-gradient(90deg, #10b981, #059669); }
-    .stat-card.used::before { background: linear-gradient(90deg, #2563eb, #1d4ed8); }
-    .stat-card.expired::before { background: linear-gradient(90deg, #f59e0b, #d97706); }
-    .stat-card.revoked::before { background: linear-gradient(90deg, #ef4444, #dc2626); }
-
-    .stat-header-row { display: flex; justify-content: space-between; align-items: center; }
-    .stat-label { font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; }
-    .stat-icon { width: 32px; height: 32px; border-radius: 8px; background: var(--bg-body); display: flex; align-items: center; justify-content: center; color: var(--text-muted); }
-    .stat-number { font-size: 30px; font-weight: 800; color: var(--navy-darker); font-family: var(--font-sans); letter-spacing: -0.8px; margin-top: 4px; }
-    .stat-card.active .stat-number { color: #059669; }
-    .stat-card.used .stat-number { color: #2563eb; }
-    .stat-card.expired .stat-number { color: #d97706; }
-    .stat-card.revoked .stat-number { color: #dc2626; }
-
-    /* ENTERPRISE CARDS */
-    .card { 
-      background: var(--bg-card); 
-      border: 1px solid var(--border-card); 
-      border-radius: 18px; 
-      padding: 26px; 
-      margin-bottom: 28px; 
-      box-shadow: var(--shadow-card); 
-      transition: all 0.2s ease;
+    .alert-warning {
+      background: #FFF8E1;
+      border: 1px solid #FFE082;
+      color: #F57F17;
     }
-    .card-title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
-    .card-title { font-size: 16.5px; font-weight: 800; color: var(--navy-darker); display: flex; align-items: center; gap: 10px; letter-spacing: -0.3px; margin-bottom: 6px; }
-    .card-title svg { stroke: var(--primary-blue); stroke-width: 2.2; }
-    .card-subtitle { font-size: 13px; color: var(--text-muted); margin-bottom: 22px; font-weight: 500; line-height: 1.4; }
-
-    /* FORMS & INPUTS */
-    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 18px; align-items: end; }
-    .form-group { display: flex; flex-direction: column; gap: 7px; }
-    .form-group label { font-size: 12px; font-weight: 700; color: var(--navy-dark); letter-spacing: -0.1px; line-height: 1.3; }
-    input[type="text"], input[type="password"], input[type="number"], select, textarea {
-      background: var(--bg-input); 
-      border: 1px solid #cbd5e1; 
-      color: var(--text-main);
-      padding: 11px 14px; 
-      border-radius: 11px; 
-      font-size: 13.5px; 
-      font-weight: 500; 
-      font-family: inherit;
-      outline: none; 
-      transition: all 0.2s ease;
-      box-shadow: var(--shadow-subtle);
+    .alert-danger {
+      background: #FFEBEE;
+      border: 1px solid #FFCDD2;
+      color: #C62828;
     }
-    input:focus, select:focus, textarea:focus { 
-      border-color: var(--primary-blue); 
-      box-shadow: 0 0 0 3.5px rgba(37, 99, 235, 0.15); 
-      background: #ffffff;
+
+    /* STATS CARDS */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 18px;
+      margin-bottom: 28px;
+    }
+    .stat-card {
+      background: var(--card-white);
+      border: 1px solid var(--pine-border);
+      border-radius: var(--radius-md);
+      padding: 18px 20px;
+      box-shadow: var(--shadow-sm);
+    }
+    .stat-header {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      letter-spacing: 0.5px;
+    }
+    .stat-value {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--pine-primary);
+      font-family: var(--font-mono);
+      margin-top: 4px;
+    }
+    .stat-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* CARD CONTAINER */
+    .card {
+      background: var(--card-white);
+      border: 1px solid var(--pine-border);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 28px;
+    }
+    .card-header {
+      padding: 18px 22px;
+      border-bottom: 1px solid var(--pine-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .card-title {
+      font-size: 17px;
+      font-weight: 800;
+      color: var(--pine-primary);
+    }
+    .card-body {
+      padding: 22px;
     }
 
     /* BUTTONS */
     .btn {
-      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); 
-      color: #ffffff; 
-      border: none; 
-      padding: 11px 22px; 
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 18px;
+      border-radius: var(--radius-sm);
+      font-size: 13.5px;
       font-weight: 700;
-      border-radius: 11px; 
-      cursor: pointer; 
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
-      font-size: 13.5px; 
-      display: inline-flex; 
-      align-items: center; 
-      justify-content: center; 
-      gap: 8px; 
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s ease;
       text-decoration: none;
-      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
     }
-    .btn:hover { background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%); transform: translateY(-1px); box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35); }
-    .btn-secondary { background: var(--bg-body); color: var(--text-main); border: 1px solid #cbd5e1; box-shadow: var(--shadow-subtle); }
-    .btn-secondary:hover { background: #e2e8f0; color: var(--navy-darker); }
-    .btn-danger { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; box-shadow: none; }
-    .btn-danger:hover { background: #dc2626; color: #ffffff; }
-    .btn-warning { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; box-shadow: none; }
-    .btn-warning:hover { background: #d97706; color: #ffffff; }
-    .btn-sm { padding: 7px 12px; font-size: 11.5px; border-radius: 8px; }
-
-    /* TOOLBAR & ENTERPRISE TABLE */
-    .table-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
-    .search-box { position: relative; flex: 1; max-width: 360px; }
-    .search-box input { width: 100%; padding-left: 38px; height: 40px; border-radius: 11px; }
-    .search-icon { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); font-size: 14px; color: var(--text-dim); }
-
-    .table-responsive { overflow-x: auto; border: 1px solid var(--border-subtle); border-radius: 14px; box-shadow: var(--shadow-subtle); }
-    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; background: #ffffff; }
-    th, td { padding: 15px 20px; border-bottom: 1px solid var(--border-subtle); vertical-align: middle; }
-    th { background: #f8fafc; color: var(--text-muted); font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.7px; }
-    tr:last-child td { border-bottom: none; }
-    tbody tr { transition: background 0.15s ease; }
-    tbody tr:hover { background: #f1f5f9; }
-
-    /* ENTERPRISE BADGES */
-    .key-badge { 
-      font-family: var(--font-mono); 
-      font-weight: 700; 
-      color: #1e40af; 
-      background: #eff6ff; 
-      padding: 4px 10px; 
-      border-radius: 7px; 
-      border: 1px solid #bfdbfe; 
-      font-size: 12px; 
-      letter-spacing: -0.2px;
+    .btn-primary {
+      background: var(--pine-primary);
+      color: var(--cream-bg);
+      box-shadow: 0 4px 12px var(--pine-glow);
     }
-    .badge { padding: 5px 12px; border-radius: 20px; font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block; }
-    .badge.active { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
-    .badge.used { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
-    .badge.expired { background: #fffbebf; color: #b45309; border: 1px solid #fde68a; }
-    .badge.revoked { background: #fef2f2; color: #b91c1c; border: 1px solid #fca5a5; }
+    .btn-primary:hover {
+      background: var(--pine-hover);
+      transform: translateY(-1px);
+    }
+    .btn-secondary {
+      background: var(--cream-surface);
+      color: var(--pine-primary);
+      border: 1.5px solid var(--pine-border);
+    }
+    .btn-secondary:hover {
+      background: var(--pine-surface);
+    }
+    .btn-danger {
+      background: var(--accent-danger);
+      color: #fff;
+    }
+    .btn-danger:hover {
+      background: #c54a4b;
+    }
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 12px;
+      border-radius: 6px;
+    }
 
-    .exp-text { font-size: 12px; font-weight: 700; color: #047857; }
-    .exp-text.expired { color: #d97706; }
-    .exp-text.lifetime { color: #2563eb; }
+    /* DATA TABLES */
+    .table-responsive {
+      overflow-x: auto;
+    }
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13.5px;
+      text-align: left;
+    }
+    table.data-table th {
+      background: var(--cream-surface);
+      color: var(--text-muted);
+      font-weight: 800;
+      font-size: 11.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 12px 16px;
+      border-bottom: 1.5px solid var(--pine-border);
+    }
+    table.data-table td {
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(0, 70, 67, 0.08);
+      color: var(--text-main);
+      vertical-align: middle;
+    }
+    table.data-table tr:hover td {
+      background: rgba(0, 70, 67, 0.02);
+    }
 
-    .alert { padding: 16px 20px; border-radius: 14px; margin-bottom: 24px; font-weight: 600; font-size: 13.5px; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--shadow-subtle); }
-    .alert-success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
-    .alert-danger { background: #fef2f2; color: #991b1b; border: 1px solid #fca5a5; }
+    /* BADGES */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 9px;
+      border-radius: var(--radius-full);
+      font-size: 11.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .badge-active { background: #E8F5E9; color: #2E7D32; border: 1px solid #C8E6C9; }
+    .badge-used { background: #E0F2FE; color: #0369A1; border: 1px solid #BAE6FD; }
+    .badge-expired { background: #FFEBEE; color: #C62828; border: 1px solid #FFCDD2; }
+    .badge-revoked { background: #F3F4F6; color: #4B5563; border: 1px solid #E5E7EB; }
 
-    /* MODAL */
-    .modal-backdrop { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; z-index: 9999; }
-    .modal-card { background: #ffffff; border-radius: 20px; padding: 28px; width: 90%; max-width: 460px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); border: 1px solid var(--border-subtle); animation: modalIn 0.2s ease-out; }
-
-    @keyframes modalIn {
+    /* MODAL POPUPS */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 34, 33, 0.6);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 20px;
+    }
+    .modal-box {
+      background: var(--card-white);
+      border: 1.5px solid var(--pine-border);
+      border-radius: var(--radius-lg);
+      max-width: 520px;
+      width: 100%;
+      box-shadow: var(--shadow-lg);
+      overflow: hidden;
+      animation: modalFadeIn 0.25s ease;
+    }
+    @keyframes modalFadeIn {
       from { opacity: 0; transform: scale(0.95); }
       to { opacity: 1; transform: scale(1); }
+    }
+    .modal-header {
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--pine-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-header h3 {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--pine-primary);
+    }
+    .modal-close-btn {
+      background: none;
+      border: none;
+      font-size: 20px;
+      color: var(--text-dim);
+      cursor: pointer;
+    }
+    .modal-body {
+      padding: 24px;
+    }
+    .modal-footer {
+      padding: 16px 24px;
+      border-top: 1px solid var(--pine-border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      background: var(--cream-surface);
+    }
+
+    .mobile-nav-toggle {
+      display: none;
+      background: var(--pine-primary);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 8px 12px;
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    @media (max-width: 992px) {
+      .sidebar {
+        position: fixed;
+        left: -280px;
+        top: 0;
+        bottom: 0;
+      }
+      .sidebar.open {
+        left: 0;
+      }
+      .content-area {
+        max-width: 100vw;
+        padding: 20px 16px;
+      }
+      .mobile-nav-toggle {
+        display: block;
+      }
+      .stats-row {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 576px) {
+      .stats-row {
+        grid-template-columns: 1fr;
+      }
+      .top-bar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
     }
   </style>
 </head>
 <body>
 
-  <?php if (!$isLoggedIn): ?>
-    <!-- STANDALONE PURE LOGIN PAGE (NO SIDEBAR, NO TOP HEADER) -->
-    <div class="login-wrapper">
-      <div class="login-card">
-        <div class="login-header">
-          <div class="brand-logo-large" style="background: transparent; box-shadow: none;">
-            <img src="../assets/logo.png" alt="FotoSync Logo" style="width: 56px; height: 56px; object-fit: contain;">
-          </div>
-          <h2>FotoSync <span>PRO</span></h2>
-          <p>Enterprise Server Admin Portal</p>
+<?php if (!$isLoggedIn): ?>
+  <!-- ========================================== -->
+  <!-- 1. ADMIN LOGIN VIEW                         -->
+  <!-- ========================================== -->
+  <div class="login-wrapper">
+    <div class="login-card">
+      <img src="../assets/logo.png" alt="Logo FotoSync" class="login-logo">
+      <h2 class="login-title">FotoSync PRO Portal</h2>
+      <p class="login-desc">Masuk untuk mengelola lisensi, pengguna, dan versi aplikasi</p>
+
+      <?php if (!empty($error_msg)): ?>
+        <div class="alert alert-danger" style="margin-bottom: 20px; text-align: left;">
+          <span>⚠️ <?= htmlspecialchars($error_msg) ?></span>
+        </div>
+      <?php endif; ?>
+
+      <?php if (!empty($dbOffline)): ?>
+        <div class="alert alert-warning" style="margin-bottom: 20px; text-align: left; font-size: 12.5px; line-height: 1.5;">
+          <span>⚠️ <strong>MySQL Belum Aktif:</strong> Silakan aktifkan service MySQL di XAMPP Control Panel untuk koneksi database. Anda tetap dapat login dengan kredensial master.</span>
+        </div>
+      <?php endif; ?>
+
+      <form method="POST" action="index.php">
+        <div class="form-group">
+          <label class="form-label" for="admin_user">Username</label>
+          <input type="text" id="admin_user" name="admin_user" class="form-input" placeholder="admin" required autofocus>
         </div>
 
-        <?php if (!empty($error_msg)): ?>
-          <div class="alert alert-danger" style="margin-bottom: 20px; padding: 12px 16px; font-size: 13px;">
-            <span>⚠️ <?= htmlspecialchars($error_msg) ?></span>
+        <div class="form-group">
+          <label class="form-label" for="admin_pass">Kata Sandi</label>
+          <div class="input-wrapper">
+            <input type="password" id="admin_pass" name="admin_pass" class="form-input" placeholder="••••••••" required>
+            <button type="button" class="toggle-pass-btn" onclick="togglePassVisibility('admin_pass')">👁️</button>
           </div>
-        <?php endif; ?>
-
-        <form method="POST" action="index.php" class="login-form">
-          <div class="form-group">
-            <label>Username Admin</label>
-            <div class="input-with-icon">
-              <span class="icon">👤</span>
-              <input type="text" name="admin_user" placeholder="Masukkan username admin..." value="admin" required autofocus>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label>Kata Sandi (Password)</label>
-            <div class="input-with-icon">
-              <span class="icon">🔒</span>
-              <input type="password" name="admin_pass" placeholder="Masukkan password admin..." required>
-            </div>
-          </div>
-
-          <button type="submit" class="btn btn-login">
-            🔐 Masuk ke Portal Admin
-          </button>
-        </form>
-
-        <div class="login-footer">
-          <span>Terhubung ke Database <strong>fotoyu_licenses</strong> (Tabel <code>admin_users</code>)</span>
-          <br><small style="color: var(--text-dim); font-size: 11.5px; margin-top: 4px; display: inline-block;">Developed by <a href="https://ghazabegins.id/" target="_blank" rel="noopener noreferrer" style="color: #2563eb; font-weight: 700; text-decoration: none;">ghazabegins.id</a></small>
         </div>
+
+        <button type="submit" class="btn-login">Masuk ke Portal Admin</button>
+      </form>
+
+      <div class="login-footer-link">
+        <a href="../index.php">← Kembali ke Halaman Utama</a>
       </div>
     </div>
-  <?php else: ?>
+  </div>
 
-    <!-- ENTERPRISE DASHBOARD LAYOUT (SIDEBAR & MAIN DASHBOARD) -->
-    <div class="app-layout">
+  <script>
+    function togglePassVisibility(id) {
+      const inp = document.getElementById(id);
+      inp.type = inp.type === 'password' ? 'text' : 'password';
+    }
+  </script>
 
-      <!-- MODULAR SIDEBAR COMPONENT -->
-      <?php require __DIR__ . '/sidebar.php'; ?>
+<?php else: ?>
+  <!-- ========================================== -->
+  <!-- 2. AUTHENTICATED ADMIN DASHBOARD VIEW       -->
+  <!-- ========================================== -->
+  <div class="dashboard-layout">
+    <!-- Include Modular Sidebar with Pine & Cream Theme -->
+    <?php require_once __DIR__ . '/sidebar.php'; ?>
 
-      <!-- MAIN CONTENT WRAPPER -->
-      <main class="main-wrapper">
-        
-        <!-- TOP NAVBAR HEADER -->
-        <header class="top-header">
-          <div class="header-left-group">
-            <div class="breadcrumb-text">
-              Server Admin / <?= strtoupper($currentTab) ?>
-            </div>
-            <?php if ($currentTab === 'telemetry'): ?>
-              <h1>Server Telemetry & Request Log</h1>
-              <p>Monitoring Real-Time Aktivitas Lisensi, IP Address, Perangkat HWID, & Event Server</p>
-            <?php elseif ($currentTab === 'updater'): ?>
-              <h1>Auto-Update & Versi Software</h1>
-              <p>Kelola Versi Rilis Terbaru, Catatan Perubahan, & Mandatory Update (Windows & macOS)</p>
-            <?php else: ?>
-              <h1>Manajemen Lisensi Terpusat</h1>
-              <p>Kontrol Durasi Masa Aktif, Master Key, & Device Binding (HWID)</p>
-            <?php endif; ?>
+    <!-- Main Content Area -->
+    <main class="content-area">
+      <!-- Top Bar -->
+      <div class="top-bar">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <button class="mobile-nav-toggle" onclick="toggleMobileSidebar()">☰</button>
+          <div>
+            <h1 class="page-title">
+              <?php
+                if ($currentTab === 'users') echo 'Kelola Pengguna (Users)';
+                else if ($currentTab === 'profile') echo 'Edit Profil & Ubah Kata Sandi';
+                else if ($currentTab === 'updater') echo 'Pengaturan Auto-Update Software';
+                else if ($currentTab === 'telemetry') echo 'Riwayat Server Telemetry Log';
+                else echo 'Manajemen Lisensi Master Key';
+              ?>
+            </h1>
+            <p class="page-subtitle">
+              Login sebagai: <strong><?= htmlspecialchars($adminDisplayName) ?></strong> (Role: <?= strtoupper($adminRole) ?>)
+            </p>
+          </div>
+        </div>
+
+        <div class="top-actions">
+          <?php if ($currentTab === 'licenses'): ?>
+            <button class="btn btn-primary" onclick="openGenerateModal()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              <span>Buat Lisensi Baru</span>
+            </button>
+          <?php elseif ($currentTab === 'users' && isAdmin()): ?>
+            <button class="btn btn-primary" onclick="openCreateUserModal()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              <span>Tambah User Baru</span>
+            </button>
+          <?php endif; ?>
+        </div>
+      </div>
+
+      <!-- Alerts Notifications -->
+      <?php if (!empty($success_msg)): ?>
+        <div class="alert alert-success">
+          <span><?= $success_msg ?></span>
+        </div>
+      <?php endif; ?>
+      <?php if (!empty($warn_msg)): ?>
+        <div class="alert alert-warning">
+          <span><?= $warn_msg ?></span>
+        </div>
+      <?php endif; ?>
+      <?php if (!empty($error_msg)): ?>
+        <div class="alert alert-danger">
+          <span><?= $error_msg ?></span>
+        </div>
+      <?php endif; ?>
+
+      <!-- TAB 1: MANAGE LICENSES -->
+      <?php if ($currentTab === 'licenses'): ?>
+        <?php
+          // Query licenses data
+          $statusFilter = $_GET['status'] ?? 'all';
+          $searchQuery = trim($_GET['q'] ?? '');
+
+          $sql = "SELECT * FROM licenses WHERE 1=1";
+          $params = [];
+
+          if ($statusFilter !== 'all') {
+              $sql .= " AND status = ?";
+              $params[] = $statusFilter;
+          }
+          if (!empty($searchQuery)) {
+              $sql .= " AND (license_key LIKE ? OR buyer_name LIKE ? OR buyer_phone LIKE ?)";
+              $params[] = "%$searchQuery%";
+              $params[] = "%$searchQuery%";
+              $params[] = "%$searchQuery%";
+          }
+          $sql .= " ORDER BY id DESC";
+          $stmt = $pdo->prepare($sql);
+          $stmt->execute($params);
+          $licenses = $stmt->fetchAll();
+
+          // Stats calculation
+          $totalLicenses = (int)$pdo->query("SELECT COUNT(*) FROM licenses")->fetchColumn();
+          $activeLicenses = (int)$pdo->query("SELECT COUNT(*) FROM licenses WHERE status = 'active'")->fetchColumn();
+          $usedLicenses = (int)$pdo->query("SELECT COUNT(*) FROM licenses WHERE status = 'used'")->fetchColumn();
+          $revokedLicenses = (int)$pdo->query("SELECT COUNT(*) FROM licenses WHERE status = 'revoked'")->fetchColumn();
+        ?>
+
+        <!-- Stats Overview -->
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="stat-header">Total Lisensi Diterbitkan</div>
+            <div class="stat-value"><?= number_format($totalLicenses) ?></div>
+            <div class="stat-sub">Seluruh Master Key</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-header">Lisensi Siap Pakai</div>
+            <div class="stat-value" style="color: var(--accent-success);"><?= number_format($activeLicenses) ?></div>
+            <div class="stat-sub">Belum Terikat HWID</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-header">Lisensi Sedang Aktif</div>
+            <div class="stat-value" style="color: #0284c7;"><?= number_format($usedLicenses) ?></div>
+            <div class="stat-sub">Terpasang di Laptop Fotografer</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-header">Lisensi Diblokir</div>
+            <div class="stat-value" style="color: var(--accent-danger);"><?= number_format($revokedLicenses) ?></div>
+            <div class="stat-sub">Status Revoked</div>
+          </div>
+        </div>
+
+        <!-- Table Card -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Daftar Lisensi Master Key</h3>
+            
+            <!-- Filters -->
+            <form method="GET" action="index.php" style="display: flex; gap: 10px; align-items: center;">
+              <input type="hidden" name="tab" value="licenses">
+              <input type="text" name="q" value="<?= htmlspecialchars($searchQuery) ?>" placeholder="Cari Key / Nama / HP..." class="form-input" style="height: 36px; width: 220px; font-size: 13px;">
+              <select name="status" class="form-input" style="height: 36px; width: 140px; font-size: 13px;" onchange="this.form.submit()">
+                <option value="all" <?= $statusFilter === 'all' ? 'selected' : '' ?>>Semua Status</option>
+                <option value="active" <?= $statusFilter === 'active' ? 'selected' : '' ?>>Siap Pakai</option>
+                <option value="used" <?= $statusFilter === 'used' ? 'selected' : '' ?>>Digunakan</option>
+                <option value="revoked" <?= $statusFilter === 'revoked' ? 'selected' : '' ?>>Diblokir</option>
+              </select>
+              <button type="submit" class="btn btn-secondary btn-sm">Filter</button>
+            </form>
           </div>
 
-          <div class="header-right">
-            <div class="user-profile-badge">
-              <div class="avatar-circle"><?= strtoupper(substr($adminDisplayName, 0, 1)) ?></div>
-              <span><?= htmlspecialchars($adminDisplayName) ?></span>
-            </div>
-          </div>
-        </header>
-
-        <div class="content-container">
-
-          <?php if (!empty($success_msg)): ?>
-            <div class="alert alert-success"><span><?= $success_msg ?></span></div>
-          <?php endif; ?>
-          <?php if (!empty($warn_msg)): ?>
-            <div class="alert alert-danger"><span><?= $warn_msg ?></span></div>
-          <?php endif; ?>
-
-          <?php if ($currentTab === 'telemetry'): ?>
-
-            <!-- TELEMETRY STATS GRID -->
-            <div class="stats-grid">
-              <div class="stat-card total">
-                <div class="stat-header-row">
-                  <span class="stat-label">Total Log Recorded</span>
-                  <div class="stat-icon">📡</div>
-                </div>
-                <span class="stat-number"><?= number_format($telemetryStats['total']) ?></span>
-              </div>
-              <div class="stat-card active">
-                <div class="stat-header-row">
-                  <span class="stat-label">Event Sukses</span>
-                  <div class="stat-icon">✅</div>
-                </div>
-                <span class="stat-number"><?= number_format($telemetryStats['success']) ?></span>
-              </div>
-              <div class="stat-card expired">
-                <div class="stat-header-row">
-                  <span class="stat-label">Peringatan (Warning)</span>
-                  <div class="stat-icon">⚠️</div>
-                </div>
-                <span class="stat-number"><?= number_format($telemetryStats['warning']) ?></span>
-              </div>
-              <div class="stat-card revoked">
-                <div class="stat-header-row">
-                  <span class="stat-label">Gagal / Error</span>
-                  <div class="stat-icon">❌</div>
-                </div>
-                <span class="stat-number"><?= number_format($telemetryStats['error']) ?></span>
-              </div>
-            </div>
-
-            <!-- TELEMETRY LOGS TABLE CARD -->
-            <div class="card">
-              <div class="table-toolbar">
-                <div class="card-title" style="margin-bottom: 0;">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <polyline points="4 17 10 11 4 5"></polyline>
-                    <line x1="12" y1="19" x2="20" y2="19"></line>
-                  </svg>
-                  Riwayat Aktivitas Server Real-Time
-                </div>
-
-                <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-                  <div class="search-box">
-                    <span class="search-icon">🔍</span>
-                    <input type="text" id="telemetrySearch" onkeyup="filterTelemetryTable()" placeholder="Cari key, IP, status, event...">
-                  </div>
-
-                  <form method="POST" action="?tab=telemetry" onsubmit="return confirm('Apakah Anda yakin ingin menghapus SELURUH log telemetry server?');">
-                    <input type="hidden" name="action" value="clear_logs">
-                    <button type="submit" class="btn btn-danger btn-sm" style="height: 40px; padding: 0 16px;">🧹 Bersihkan Log</button>
-                  </form>
-                </div>
-              </div>
-
-              <div class="table-responsive">
-                <table id="telemetryTable">
-                  <thead>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Kode Lisensi Master Key</th>
+                  <th>Member / Pembeli</th>
+                  <th>Paket</th>
+                  <th>Masa Aktif</th>
+                  <th>Status & HWID</th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php if (empty($licenses)): ?>
+                  <tr>
+                    <td colspan="7" style="text-align: center; padding: 36px; color: var(--text-dim);">
+                      Belum ada data lisensi yang sesuai dengan kriteria pencarian.
+                    </td>
+                  </tr>
+                <?php else: ?>
+                  <?php foreach ($licenses as $lic): ?>
+                    <?php
+                      $exp = calculateLicenseExpiration($lic['activated_at'], $lic['duration_days'], $lic['expires_at']);
+                      $badgeClass = 'badge-active';
+                      if ($lic['status'] === 'used') $badgeClass = 'badge-used';
+                      if ($lic['status'] === 'revoked') $badgeClass = 'badge-revoked';
+                      if ($exp['is_expired']) $badgeClass = 'badge-expired';
+                    ?>
                     <tr>
-                      <th># ID</th>
-                      <th>Waktu WIB</th>
-                      <th>Tipe Event</th>
-                      <th>Master Key / Perangkat</th>
-                      <th>IP Address</th>
-                      <th>Status</th>
-                      <th>Detail Pesan Telemetri</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <?php if (empty($telemetryLogs)): ?>
-                      <tr>
-                        <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-muted);">
-                          Belum ada catatan log telemetri server saat ini.
-                        </td>
-                      </tr>
-                    <?php else: ?>
-                      <?php foreach ($telemetryLogs as $log): ?>
-                        <?php
-                          $statusClass = 'used';
-                          if ($log['status'] === 'SUCCESS') $statusClass = 'active';
-                          else if ($log['status'] === 'WARNING') $statusClass = 'expired';
-                          else if ($log['status'] === 'ERROR') $statusClass = 'revoked';
-                        ?>
-                        <tr>
-                          <td><strong>#<?= $log['id'] ?></strong></td>
-                          <td style="font-family: var(--font-mono); font-size: 11.5px; white-space: nowrap; color: var(--text-muted);">
-                            <?= date('d/m/Y H:i:s', strtotime($log['created_at'])) ?>
-                          </td>
-                          <td>
-                            <span class="badge" style="background: var(--bg-body); color: var(--navy-dark); border: 1px solid var(--border-subtle);">
-                              <?= htmlspecialchars($log['action_type']) ?>
-                            </span>
-                          </td>
-                          <td>
-                            <?php if (!empty($log['license_key'])): ?>
-                              <span class="key-badge"><?= htmlspecialchars($log['license_key']) ?></span>
-                            <?php else: ?>
-                              <span style="color: var(--text-dim); font-size: 11.5px;">- Non License -</span>
-                            <?php endif; ?>
-                            <?php if (!empty($log['hwid'])): ?>
-                              <div style="font-family: var(--font-mono); font-size: 10.5px; color: var(--text-muted); margin-top: 2px;">
-                                HWID: <?= htmlspecialchars(substr($log['hwid'], 0, 16)) ?>...
-                              </div>
-                            <?php endif; ?>
-                          </td>
-                          <td style="font-family: var(--font-mono); font-size: 11.5px;">
-                            <?= htmlspecialchars($log['ip_address']) ?>
-                          </td>
-                          <td>
-                            <span class="badge <?= $statusClass ?>"><?= htmlspecialchars($log['status']) ?></span>
-                          </td>
-                          <td style="font-size: 12.5px; color: var(--navy-darker); font-weight: 500;">
-                            <?= htmlspecialchars($log['message']) ?>
-                          </td>
-                        </tr>
-                      <?php endforeach; ?>
-                    <?php endif; ?>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-          <?php elseif ($currentTab === 'updater'): ?>
-
-            <!-- SOFTWARE AUTO-UPDATE SETTINGS CARD ONLY -->
-            <div class="card" style="border-top: 4px solid var(--primary-blue); max-width: 860px; margin: 0 auto;">
-              <div class="card-title" style="color: var(--primary-blue-dark); font-size: 17px;">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                  <polyline points="7 10 12 15 17 10"></polyline>
-                  <line x1="12" y1="15" x2="12" y2="3"></line>
-                </svg>
-                🚀 Pengaturan Versi & Auto-Update Multi-Platform (FotoSync PRO)
-              </div>
-              <p class="card-subtitle">
-                Perbarui versi rilis di bawah ini untuk mendorong notifikasi update otomatis secara real-time ke seluruh aplikasi desktop pengguna FotoSync PRO (Windows & macOS).
-              </p>
-
-              <form method="POST" action="?tab=updater" class="form-grid">
-                <input type="hidden" name="action" value="save_version">
-                
-                <div class="form-group">
-                  <label>Versi Rilis Terbaru (Latest Version)</label>
-                  <input type="text" name="latest_version" value="<?= htmlspecialchars($versionConfig['latest_version']) ?>" placeholder="Contoh: 1.1.0" required>
-                </div>
-
-                <div class="form-group">
-                  <label>Versi Minimal Wajib (Min Required Version)</label>
-                  <input type="text" name="min_required_version" value="<?= htmlspecialchars($versionConfig['min_required_version']) ?>" placeholder="Contoh: 1.0.0" required>
-                </div>
-
-                <div class="form-group">
-                  <label>🪟 URL Download Windows (.exe)</label>
-                  <input type="text" name="windows_download_url" value="<?= htmlspecialchars($versionConfig['windows_download_url']) ?>" placeholder="http://localhost/.../FotoSync-Setup-Latest.exe" required>
-                </div>
-
-                <div class="form-group">
-                  <label>🍎 URL Download macOS / Macbook (.dmg)</label>
-                  <input type="text" name="mac_download_url" value="<?= htmlspecialchars($versionConfig['mac_download_url']) ?>" placeholder="http://localhost/.../FotoSync-Setup-Latest.dmg" required>
-                </div>
-
-                <div class="form-group" style="grid-column: span 2;">
-                  <label>Catatan Perubahan Versi Baru (Release Notes)</label>
-                  <textarea name="release_notes" rows="4" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 11px; padding: 12px; font-family: inherit; font-size: 13px; color: var(--navy-darker);" placeholder="• Penambahan fitur...&#10;• Perbaikan bug..."><?= htmlspecialchars($versionConfig['release_notes']) ?></textarea>
-                </div>
-
-                <div class="form-group" style="grid-column: span 2; display: flex; align-items: center; gap: 12px; background: #fff5f5; border: 1px solid #fed7d7; padding: 14px 16px; border-radius: 11px;">
-                  <input type="checkbox" id="is_mandatory" name="is_mandatory" value="1" <?= !empty($versionConfig['is_mandatory']) ? 'checked' : '' ?> style="width: 18px; height: 18px; cursor: pointer; accent-color: #dc2626;">
-                  <label for="is_mandatory" style="margin-bottom: 0; cursor: pointer; font-weight: 700; color: #991b1b; font-size: 13px;">
-                    ⚠️ Update Wajib (Mandatory Update) — Pengguna wajib melakukan update sebelum bisa menggunakan aplikasi uploader
-                  </label>
-                </div>
-
-                <button type="submit" class="btn" style="grid-column: span 2; height: 48px; font-size: 14.5px;">
-                  💾 Terbitkan Pembaruan Versi <?= htmlspecialchars($versionConfig['latest_version']) ?> ke Semua Pengguna
-                </button>
-              </form>
-            </div>
-
-          <?php else: ?>
-
-            <!-- METRICS STATS CARDS -->
-            <div class="stats-grid">
-              <div class="stat-card total">
-                <div class="stat-header-row">
-                  <span class="stat-label">Total Master Key</span>
-                  <div class="stat-icon">🔑</div>
-                </div>
-                <span class="stat-number"><?= number_format($stats['total']) ?></span>
-              </div>
-              <div class="stat-card active">
-                <div class="stat-header-row">
-                  <span class="stat-label">Belum Dipakai (Siap)</span>
-                  <div class="stat-icon">✨</div>
-                </div>
-                <span class="stat-number"><?= number_format($stats['active']) ?></span>
-              </div>
-              <div class="stat-card used">
-                <div class="stat-header-row">
-                  <span class="stat-label">Terpakai & Aktif</span>
-                  <div class="stat-icon">💻</div>
-                </div>
-                <span class="stat-number"><?= number_format($stats['used']) ?></span>
-              </div>
-              <div class="stat-card expired">
-                <div class="stat-header-row">
-                  <span class="stat-label">Kedaluwarsa (Expired)</span>
-                  <div class="stat-icon">⏳</div>
-                </div>
-                <span class="stat-number"><?= number_format($stats['expired']) ?></span>
-              </div>
-              <div class="stat-card revoked">
-                <div class="stat-header-row">
-                  <span class="stat-label">Diblokir (Revoked)</span>
-                  <div class="stat-icon">🚫</div>
-                </div>
-                <span class="stat-number"><?= number_format($stats['revoked']) ?></span>
-              </div>
-            </div>
-
-            <!-- GENERATE LICENSE CARD -->
-            <div class="card">
-              <div class="card-title">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-                </svg>
-                Generate Master Key & Durasi Baru
-              </div>
-              <p class="card-subtitle">Buat Master Key lisensi baru untuk member dengan pilihan tier kuota harian dan durasi langganan.</p>
-              
-              <form method="POST" class="form-grid">
-                <input type="hidden" name="action" value="generate">
-                
-                <div class="form-group">
-                  <label>Nama Member / Studio</label>
-                  <input type="text" name="buyer_name" placeholder="Contoh: Studio Foto Berkah" required>
-                </div>
-
-                <div class="form-group">
-                  <label>No. WhatsApp / HP</label>
-                  <input type="text" name="buyer_phone" placeholder="Contoh: 081234567890">
-                </div>
-
-                <div class="form-group">
-                  <label>Pilih Paket Langganan Durasi</label>
-                  <select name="plan_tier" required>
-                    <option value="1_day">⚡ PAKET 1 HARI (Unlimited Foto - 24 Jam) - Rp 25rb</option>
-                    <option value="7_days" selected>🚀 PAKET 7 HARI (Unlimited Foto - 1 Minggu) - Rp 50rb</option>
-                    <option value="30_days">👑 PAKET 30 HARI (Unlimited Foto - 1 Bulan) - Rp 110rb</option>
-                    <option value="pro">⭐ PAKET LIFETIME (Unlimited Foto - Permanen)</option>
-                  </select>
-                </div>
-
-                <div class="form-group">
-                  <label>Durasi Masa Aktif</label>
-                  <select name="duration_days_preset" id="durationSelect" onchange="toggleCustomDuration(this.value)">
-                    <option value="auto" selected>Otomatis Sesuai Paket Ditentukan</option>
-                    <option value="1">1 Hari (24 Jam)</option>
-                    <option value="7">7 Hari (1 Minggu)</option>
-                    <option value="30">1 Bulan (30 Hari)</option>
-                    <option value="90">3 Bulan (90 Hari)</option>
-                    <option value="365">1 Tahun (365 Hari)</option>
-                    <option value="0">⭐ Lifetime / Permanen (Tanpa Batas)</option>
-                    <option value="custom">Input Custom Hari...</option>
-                  </select>
-                </div>
-
-                <div class="form-group" id="customDurationGroup" style="display: none;">
-                  <label>Jumlah Hari Custom</label>
-                  <input type="number" name="custom_duration" min="1" placeholder="30">
-                </div>
-
-                <div class="form-group">
-                  <label>Catatan / Tag Event (Opsional)</label>
-                  <input type="text" name="notes" placeholder="Contoh: Mandiri Jogja Marathon 2026">
-                </div>
-
-                <button type="submit" class="btn" style="height: 44px;">⚡ Buat Master Key</button>
-              </form>
-            </div>
-
-            <!-- LICENSES LIST TABLE CARD -->
-            <div class="card">
-              <div class="table-toolbar">
-                <div class="card-title" style="margin-bottom: 0;">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                    <polyline points="14 2 14 8 20 8"></polyline>
-                  </svg>
-                  Daftar Lisensi Terdaftar & Device Binding
-                </div>
-
-                <div class="search-box">
-                  <span class="search-icon">🔍</span>
-                  <input type="text" id="tableSearch" placeholder="Cari Nama, Key, HP..." onkeyup="filterTable()">
-                </div>
-              </div>
-
-              <div class="table-responsive">
-                <table id="licensesTable">
-                  <thead>
-                    <tr>
-                      <th>ID</th>
-                      <th>Master Key</th>
-                      <th>Paket & Limit</th>
-                      <th>Nama Member & Kontak</th>
-                      <th>Durasi Lisensi</th>
-                      <th>Status</th>
-                      <th>Device Bound (HWID)</th>
-                      <th>Masa Aktif & Expiry</th>
-                      <th style="text-align: right;">Aksi Admin</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <?php foreach ($licenses as $lic): ?>
-                      <tr>
-                        <td><strong>#<?= $lic['id'] ?></strong></td>
-                        <td>
-                          <div style="display: flex; align-items: center; gap: 8px;">
-                            <span class="key-badge"><?= htmlspecialchars($lic['license_key']) ?></span>
-                            <button type="button" class="btn btn-secondary btn-sm" style="padding: 4px 8px;" onclick="copyText('<?= htmlspecialchars($lic['license_key']) ?>')" title="Salin Kode Master Key">📋</button>
+                      <td>#<?= $lic['id'] ?></td>
+                      <td>
+                        <strong style="font-family: var(--font-mono); color: var(--pine-primary); font-size: 14px;">
+                          <?= htmlspecialchars($lic['license_key']) ?>
+                        </strong>
+                      </td>
+                      <td>
+                        <div style="font-weight: 700;"><?= htmlspecialchars($lic['buyer_name'] ?: 'Member') ?></div>
+                        <div style="font-size: 12px; color: var(--text-dim);"><?= htmlspecialchars($lic['buyer_phone'] ?: '-') ?></div>
+                      </td>
+                      <td>
+                        <span class="badge" style="background: var(--pine-surface); color: var(--pine-primary); border: 1px solid var(--pine-border);">
+                          <?= strtoupper($lic['plan_tier']) ?>
+                        </span>
+                      </td>
+                      <td>
+                        <div style="font-weight: 700; font-size: 13px;"><?= $exp['status_label'] ?></div>
+                        <?php if (!empty($lic['expires_at'])): ?>
+                          <div style="font-size: 11px; color: var(--text-dim);">Exp: <?= date('d M Y', strtotime($lic['expires_at'])) ?></div>
+                        <?php endif; ?>
+                      </td>
+                      <td>
+                        <span class="badge <?= $badgeClass ?>"><?= strtoupper($lic['status']) ?></span>
+                        <?php if (!empty($lic['hwid'])): ?>
+                          <div style="font-size: 11px; font-family: var(--font-mono); color: var(--text-dim); margin-top: 4px;" title="<?= htmlspecialchars($lic['hwid']) ?>">
+                            HWID: <?= substr($lic['hwid'], 0, 10) ?>...
                           </div>
-                        </td>
-                        <td>
-                          <?php 
-                            $pTier = $lic['plan_tier'] ?? 'pro';
-                            if ($pTier === 'free') echo '<span class="badge" style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;">🆓 FREE (20 Foto)</span>';
-                            else if ($pTier === 'premium') echo '<span class="badge" style="background: #fffbebf; color: #b45309; border: 1px solid #fde68a;">⚡ PREMIUM (500 Foto)</span>';
-                            else echo '<span class="badge" style="background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe;">🚀 PRO (UNLIMITED)</span>';
-                          ?>
-                        </td>
-                        <td>
-                          <strong style="color: var(--navy-darker);"><?= htmlspecialchars($lic['buyer_name'] ?? 'Member') ?></strong><br>
-                          <small style="color: var(--text-muted); font-size: 11.5px;"><?= htmlspecialchars($lic['buyer_phone'] ?? '-') ?></small>
-                        </td>
-                        <td>
-                          <strong><?= $lic['duration_days'] == 0 ? '⭐ Lifetime' : "{$lic['duration_days']} Hari" ?></strong>
-                          <?php if ($lic['notes']): ?>
-                            <br><small style="color: var(--text-muted); font-size: 11.5px;"><?= htmlspecialchars($lic['notes']) ?></small>
+                        <?php endif; ?>
+                      </td>
+                      <td>
+                        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                          <!-- Reset HWID (Unbind) -->
+                          <?php if (!empty($lic['hwid'])): ?>
+                            <form method="POST" onsubmit="return confirm('Reset HWID perangkat untuk lisensi ini?');">
+                              <input type="hidden" name="action" value="unbind">
+                              <input type="hidden" name="license_id" value="<?= $lic['id'] ?>">
+                              <button type="submit" class="btn btn-secondary btn-sm" title="Lepas Ikatan HWID Perangkat">Unbind</button>
+                            </form>
                           <?php endif; ?>
-                        </td>
-                        <td>
-                          <span class="badge <?= $lic['computed_status'] ?>"><?= strtoupper($lic['computed_status']) ?></span>
-                        </td>
-                        <td>
-                          <?php if ($lic['hwid']): ?>
-                            <code style="color: var(--navy-darker); font-family: var(--font-mono); font-size: 11px; background: #e2e8f0; padding: 3px 7px; border-radius: 6px;"><?= htmlspecialchars($lic['hwid']) ?></code>
-                            <br><small style="color: var(--text-muted); font-size: 11px;">Cek: <?= $lic['last_check_at'] ? date('d/m/y H:i', strtotime($lic['last_check_at'])) : '-' ?></small>
+
+                          <!-- Extend / Lifetime Modal Trigger -->
+                          <button class="btn btn-secondary btn-sm" onclick="openExtendModal(<?= $lic['id'] ?>, '<?= htmlspecialchars($lic['license_key']) ?>')">Perpanjang</button>
+
+                          <!-- Revoke / Reactivate -->
+                          <?php if ($lic['status'] === 'revoked'): ?>
+                            <form method="POST">
+                              <input type="hidden" name="action" value="reactivate">
+                              <input type="hidden" name="license_id" value="<?= $lic['id'] ?>">
+                              <button type="submit" class="btn btn-secondary btn-sm">Aktifkan</button>
+                            </form>
                           <?php else: ?>
-                            <span style="color: var(--text-dim); font-style: italic; font-size: 12px;">Belum Diaktifkan</span>
+                            <form method="POST" onsubmit="return confirm('Blokir lisensi ini?');">
+                              <input type="hidden" name="action" value="revoke">
+                              <input type="hidden" name="license_id" value="<?= $lic['id'] ?>">
+                              <button type="submit" class="btn btn-secondary btn-sm" style="color: var(--accent-danger);">Blokir</button>
+                            </form>
                           <?php endif; ?>
-                        </td>
-                        <td>
-                          <?php if ($lic['exp_meta']['is_lifetime']): ?>
-                            <span class="exp-text lifetime">PERMANEN (LIFETIME)</span>
-                          <?php elseif ($lic['exp_meta']['is_expired']): ?>
-                            <span class="exp-text expired">⚠️ KEDALUWARSA</span><br>
-                            <small style="color: var(--text-muted); font-size: 11px;"><?= date('d M Y', strtotime($lic['expires_at'])) ?></small>
-                          <?php elseif (!empty($lic['expires_at'])): ?>
-                            <span class="exp-text">Sisa <?= $lic['exp_meta']['remaining_days'] ?> Hari</span><br>
-                            <small style="color: var(--text-muted); font-size: 11px;">s.d. <?= date('d M Y', strtotime($lic['expires_at'])) ?></small>
-                          <?php else: ?>
-                            <span style="color: var(--text-muted); font-size: 12px;">Siap Aktif (<?= $lic['duration_days'] ?> Hari)</span>
-                          <?php endif; ?>
-                        </td>
-                        <td style="text-align: right;">
-                          <div style="display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap;">
-                            <?php if ($lic['hwid']): ?>
-                              <form method="POST" style="display:inline;" onsubmit="return confirm('Unbind HWID Perangkat untuk member ini? Member bisa mengaktifkan ulang di laptop baru.');">
-                                <input type="hidden" name="action" value="unbind">
-                                <input type="hidden" name="license_id" value="<?= $lic['id'] ?>">
-                                <button type="submit" class="btn btn-warning btn-sm" title="Reset Device Binding (Unbind HWID)">🔄 Unbind</button>
-                              </form>
-                            <?php endif; ?>
 
-                            <!-- EXTEND DURATION BUTTON -->
-                            <button type="button" class="btn btn-secondary btn-sm" onclick="openExtendModal(<?= $lic['id'] ?>, '<?= htmlspecialchars($lic['license_key']) ?>', '<?= htmlspecialchars($lic['buyer_name']) ?>', <?= $lic['duration_days'] ?>)" title="Perpanjang Masa Aktif">⏳ Perpanjang</button>
-
-                            <?php if ($lic['computed_status'] !== 'revoked'): ?>
-                              <form method="POST" style="display:inline;" onsubmit="return confirm('Blokir lisensi ini?');">
-                                <input type="hidden" name="action" value="revoke">
-                                <input type="hidden" name="license_id" value="<?= $lic['id'] ?>">
-                                <button type="submit" class="btn btn-danger btn-sm" title="Blokir Lisensi">🚫 Blokir</button>
-                              </form>
-                            <?php else: ?>
-                              <form method="POST" style="display:inline;">
-                                <input type="hidden" name="action" value="reactivate">
-                                <input type="hidden" name="license_id" value="<?= $lic['id'] ?>">
-                                <button type="submit" class="btn btn-secondary btn-sm" title="Buka Blokir">✅ Buka Blokir</button>
-                              </form>
-                            <?php endif; ?>
-
-                            <form method="POST" style="display:inline;" onsubmit="return confirm('Hapus lisensi ini secara permanen?');">
+                          <!-- Delete (Admin Only) -->
+                          <?php if (isAdmin()): ?>
+                            <form method="POST" onsubmit="return confirm('Yakin ingin MENGHAPUS PERMANEN lisensi ini?');">
                               <input type="hidden" name="action" value="delete">
                               <input type="hidden" name="license_id" value="<?= $lic['id'] ?>">
-                              <button type="submit" class="btn btn-danger btn-sm" style="padding: 6px 10px;" title="Hapus Permanen">🗑️</button>
+                              <button type="submit" class="btn btn-danger btn-sm">Hapus</button>
                             </form>
-                          </div>
-                        </td>
-                      </tr>
-                    <?php endforeach; ?>
-                    <?php if (empty($licenses)): ?>
-                      <tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 40px;">Belum ada kode lisensi terdaftar di database server.</td></tr>
-                    <?php endif; ?>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-          <?php endif; ?>
-
-          <!-- FOOTER COPYRIGHT CREDIT -->
-          <footer style="margin-top: 36px; padding-top: 20px; border-top: 1px solid var(--border-subtle); text-align: center; font-size: 12.5px; color: var(--text-muted); font-weight: 500;">
-            FotoSync PRO Enterprise License Server &bull; Developed by <a href="https://ghazabegins.id/" target="_blank" rel="noopener noreferrer" style="color: var(--primary-blue); font-weight: 700; text-decoration: none;">ghazabegins.id</a>
-          </footer>
+                          <?php endif; ?>
+                        </div>
+                      </td>
+                    </tr>
+                  <?php endforeach; ?>
+                <?php endif; ?>
+              </tbody>
+            </table>
+          </div>
         </div>
-      </main>
-    </div>
 
-    <!-- EXTEND DURATION MODAL -->
-    <div id="extendModal" class="modal-backdrop" style="display: none;">
-      <div class="modal-card">
-        <h3 style="margin-bottom: 8px; font-size: 17px; font-weight: 800; color: var(--navy-darker);">⏳ Perpanjang Masa Aktif Lisensi</h3>
-        <p id="extendModalSub" style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;"></p>
-        
-        <form method="POST">
-          <input type="hidden" name="action" value="extend">
-          <input type="hidden" name="license_id" id="extendLicenseId">
+      <!-- TAB 2: MANAGE USERS (ADMIN ONLY) -->
+      <?php elseif ($currentTab === 'users' && isAdmin()): ?>
+        <?php
+          $users = $pdo->query("SELECT * FROM admin_users ORDER BY id ASC")->fetchAll();
+          $totalUsers = count($users);
+          $adminCount = 0;
+          $staffCount = 0;
+          foreach ($users as $u) {
+              if (($u['role'] ?? 'admin') === 'admin') $adminCount++;
+              else $staffCount++;
+          }
+        ?>
 
-          <div class="form-group" style="margin-bottom: 22px;">
-            <label>Tambah Durasi Masa Aktif</label>
-            <select name="extend_days" required style="width: 100%; height: 44px;">
-              <option value="30">+30 Hari (1 Bulan)</option>
-              <option value="90">+90 Hari (3 Bulan)</option>
-              <option value="180">+180 Hari (6 Bulan)</option>
-              <option value="365" selected>+365 Hari (1 Tahun)</option>
-              <option value="0">⭐ Ubah Menjadi LIFETIME (Permanen)</option>
+        <!-- User Stats -->
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="stat-header">Total Pengguna Terdaftar</div>
+            <div class="stat-value"><?= $totalUsers ?></div>
+            <div class="stat-sub">Akun Admin & Staff</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-header">Administrator</div>
+            <div class="stat-value" style="color: var(--pine-primary);"><?= $adminCount ?></div>
+            <div class="stat-sub">Hak Akses Penuh</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-header">Staff CS / Operasional</div>
+            <div class="stat-value" style="color: #0284c7;"><?= $staffCount ?></div>
+            <div class="stat-sub">Hak Akses Terbatas</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Daftar Pengguna Portal Admin</h3>
+            <button class="btn btn-primary btn-sm" onclick="openCreateUserModal()">+ Tambah Pengguna</button>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Nama Lengkap</th>
+                  <th>Username</th>
+                  <th>Role Hak Akses</th>
+                  <th>Tanggal Dibuat</th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php foreach ($users as $u): ?>
+                  <tr>
+                    <td>#<?= $u['id'] ?></td>
+                    <td>
+                      <div style="display: flex; align-items: center; gap: 10px;">
+                        <div class="user-avatar" style="width: 32px; height: 32px; font-size: 14px;">
+                          <?= strtoupper(substr($u['name'], 0, 1)) ?>
+                        </div>
+                        <strong><?= htmlspecialchars($u['name']) ?></strong>
+                        <?php if ($u['id'] == ($_SESSION['admin_id'] ?? 0)): ?>
+                          <span style="font-size: 11px; background: var(--pine-surface); color: var(--pine-primary); padding: 2px 6px; border-radius: 4px; font-weight: 700;">(Anda)</span>
+                        <?php endif; ?>
+                      </div>
+                    </td>
+                    <td><code style="font-family: var(--font-mono); font-weight: 700;">@<?= htmlspecialchars($u['username']) ?></code></td>
+                    <td>
+                      <span class="role-badge <?= ($u['role'] ?? 'admin') === 'admin' ? 'role-admin' : 'role-staff' ?>">
+                        <?= ($u['role'] ?? 'admin') === 'admin' ? '🛡️ Administrator' : '👤 Staff CS' ?>
+                      </span>
+                    </td>
+                    <td style="font-size: 12.5px; color: var(--text-dim);">
+                      <?= date('d M Y, H:i', strtotime($u['created_at'])) ?>
+                    </td>
+                    <td>
+                      <div style="display: flex; gap: 6px;">
+                        <button class="btn btn-secondary btn-sm" onclick="openEditUserModal(<?= $u['id'] ?>, '<?= htmlspecialchars($u['username']) ?>', '<?= htmlspecialchars($u['name']) ?>', '<?= htmlspecialchars($u['role'] ?? 'admin') ?>')">Edit</button>
+
+                        <?php if ($u['id'] != ($_SESSION['admin_id'] ?? 0) && $u['username'] !== $_SESSION['admin_username']): ?>
+                          <form method="POST" onsubmit="return confirm('Hapus akun user <?= htmlspecialchars($u['username']) ?>?');">
+                            <input type="hidden" name="action" value="delete_user">
+                            <input type="hidden" name="user_id" value="<?= $u['id'] ?>">
+                            <input type="hidden" name="target_username" value="<?= htmlspecialchars($u['username']) ?>">
+                            <button type="submit" class="btn btn-danger btn-sm">Hapus</button>
+                          </form>
+                        <?php endif; ?>
+                      </div>
+                    </td>
+                  </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      <!-- TAB 3: EDIT PROFILE & PASSWORD (ALL USERS) -->
+      <?php elseif ($currentTab === 'profile'): ?>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 900px;">
+          <!-- Edit Name Card -->
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Profil Saya</h3>
+            </div>
+            <div class="card-body">
+              <form method="POST">
+                <input type="hidden" name="action" value="update_profile">
+
+                <div class="form-group">
+                  <label class="form-label">Username</label>
+                  <input type="text" class="form-input" value="<?= htmlspecialchars($adminUsername) ?>" disabled style="background: rgba(0,0,0,0.05);">
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">Role Akses</label>
+                  <div style="margin-top: 4px;">
+                    <span class="role-badge <?= $adminRole === 'admin' ? 'role-admin' : 'role-staff' ?>" style="font-size: 13px; padding: 4px 10px;">
+                      <?= $adminRole === 'admin' ? '🛡️ Administrator' : '👤 Staff Server' ?>
+                    </span>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">Nama Lengkap Tampilan</label>
+                  <input type="text" name="display_name" class="form-input" value="<?= htmlspecialchars($adminDisplayName) ?>" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Simpan Perubahan Nama</button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Change Password Card -->
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Ubah Kata Sandi</h3>
+            </div>
+            <div class="card-body">
+              <form method="POST">
+                <input type="hidden" name="action" value="change_password">
+
+                <div class="form-group">
+                  <label class="form-label">Kata Sandi Saat Ini (Lama)</label>
+                  <input type="password" name="current_password" class="form-input" placeholder="••••••••" required>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">Kata Sandi Baru</label>
+                  <input type="password" name="new_password" class="form-input" placeholder="Minimal 6 karakter" required>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">Konfirmasi Kata Sandi Baru</label>
+                  <input type="password" name="confirm_password" class="form-input" placeholder="Ulangi kata sandi baru" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Perbarui Kata Sandi</button>
+              </form>
+            </div>
+          </div>
+        </div>
+
+      <!-- TAB 4: AUTO-UPDATER CONFIG (ADMIN ONLY) -->
+      <?php elseif ($currentTab === 'updater' && isAdmin()): ?>
+        <?php
+          $configFile = __DIR__ . '/../data/version_config.json';
+          $cfg = [
+              'latest_version' => '1.3.0',
+              'min_required_version' => '1.0.0',
+              'windows_download_url' => '',
+              'mac_download_url' => '',
+              'release_notes' => '',
+              'is_mandatory' => false
+          ];
+          if (file_exists($configFile)) {
+              $loaded = json_decode(file_get_contents($configFile), true);
+              if ($loaded) $cfg = array_merge($cfg, $loaded);
+          }
+        ?>
+        <div class="card" style="max-width: 800px;">
+          <div class="card-header">
+            <h3 class="card-title">Konfigurasi Rilis Auto-Update Multi-Platform</h3>
+          </div>
+          <div class="card-body">
+            <form method="POST">
+              <input type="hidden" name="action" value="save_version">
+
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div class="form-group">
+                  <label class="form-label">Versi Terbaru Aplikasi (Latest Version)</label>
+                  <input type="text" name="latest_version" class="form-input" value="<?= htmlspecialchars($cfg['latest_version']) ?>" required placeholder="Contoh: 1.3.0">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Versi Minimum Diperlukan</label>
+                  <input type="text" name="min_required_version" class="form-input" value="<?= htmlspecialchars($cfg['min_required_version']) ?>" required placeholder="Contoh: 1.0.0">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">URL Unduh Windows (.exe Installer)</label>
+                <input type="url" name="windows_download_url" class="form-input" value="<?= htmlspecialchars($cfg['windows_download_url'] ?? $cfg['download_url'] ?? '') ?>" placeholder="https://github.com/.../Setup.exe" required>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">URL Unduh macOS (.dmg Installer)</label>
+                <input type="url" name="mac_download_url" class="form-input" value="<?= htmlspecialchars($cfg['mac_download_url'] ?? '') ?>" placeholder="https://github.com/.../Fotoyu.dmg">
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Catatan Rilis (Release Notes)</label>
+                <textarea name="release_notes" class="form-input" style="height: 100px; padding: 10px;" placeholder="• Perbaikan fitur Live Shutter..."><?= htmlspecialchars($cfg['release_notes']) ?></textarea>
+              </div>
+
+              <button type="submit" class="btn btn-primary">Simpan & Publikasikan Versi Baru</button>
+            </form>
+          </div>
+        </div>
+
+      <!-- TAB 5: TELEMETRY LOG -->
+      <?php elseif ($currentTab === 'telemetry'): ?>
+        <?php
+          ensureTelemetryLogsTable($pdo);
+          $logs = $pdo->query("SELECT * FROM telemetry_logs ORDER BY id DESC LIMIT 100")->fetchAll();
+        ?>
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Log Aktivitas & Permintaan Lisensi (Terakhir 100)</h3>
+            <?php if (isAdmin()): ?>
+              <form method="POST" onsubmit="return confirm('Bersihkan seluruh riwayat log telemetry?');">
+                <input type="hidden" name="action" value="clear_logs">
+                <button type="submit" class="btn btn-secondary btn-sm" style="color: var(--accent-danger);">Bersihkan Log</button>
+              </form>
+            <?php endif; ?>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Waktu</th>
+                  <th>Action</th>
+                  <th>Status</th>
+                  <th>Lisensi Key</th>
+                  <th>Pesan / Keterangan</th>
+                  <th>IP Address</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php if (empty($logs)): ?>
+                  <tr><td colspan="6" style="text-align: center; padding: 30px; color: var(--text-dim);">Belum ada log tercatat.</td></tr>
+                <?php else: ?>
+                  <?php foreach ($logs as $l): ?>
+                    <tr>
+                      <td style="font-size: 12px; color: var(--text-dim);"><?= date('d/m/Y H:i:s', strtotime($l['created_at'])) ?></td>
+                      <td><strong><?= htmlspecialchars($l['action_type']) ?></strong></td>
+                      <td>
+                        <span class="badge <?= $l['status'] === 'SUCCESS' ? 'badge-active' : 'badge-expired' ?>">
+                          <?= htmlspecialchars($l['status']) ?>
+                        </span>
+                      </td>
+                      <td><code style="font-family: var(--font-mono);"><?= htmlspecialchars($l['license_key'] ?: '-') ?></code></td>
+                      <td style="font-size: 13px;"><?= htmlspecialchars($l['message'] ?: '-') ?></td>
+                      <td style="font-size: 12px; color: var(--text-dim);"><?= htmlspecialchars($l['ip_address']) ?></td>
+                    </tr>
+                  <?php endforeach; ?>
+                <?php endif; ?>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      <?php endif; ?>
+    </main>
+  </div>
+
+  <!-- MODAL: GENERATE MASTER KEY -->
+  <div id="generateModal" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Terbitkan Master Key Baru</h3>
+        <button class="modal-close-btn" onclick="closeGenerateModal()">✕</button>
+      </div>
+      <form method="POST">
+        <input type="hidden" name="action" value="generate">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Nama Member / Fotografer</label>
+            <input type="text" name="buyer_name" class="form-input" placeholder="Contoh: Budi Santoso" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nomor WhatsApp Member</label>
+            <input type="text" name="buyer_phone" class="form-input" placeholder="081234567890">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Pilihan Paket Lisensi</label>
+            <select name="plan_tier" class="form-input" id="planSelect" onchange="updateDurationPreset(this.value)">
+              <option value="7_days">PRO (7 Hari) — Rp 99.000</option>
+              <option value="1_day">EXPRESS (1 Hari) — Rp 25.000</option>
+              <option value="30_days">MONTHLY PRO (30 Hari) — Rp 299.000</option>
+              <option value="free">TRIAL (1 Hari Kuota 20)</option>
             </select>
           </div>
-
-          <div style="display: flex; gap: 12px; justify-content: flex-end;">
-            <button type="button" class="btn btn-secondary" onclick="closeExtendModal()">Batal</button>
-            <button type="submit" class="btn">Simpan Perpanjangan</button>
+          <div class="form-group">
+            <label class="form-label">Masa Aktif</label>
+            <select name="duration_days_preset" class="form-input" id="durationSelect">
+              <option value="auto">Sesuai Paket (Otomatis)</option>
+              <option value="1">1 Hari</option>
+              <option value="7">7 Hari</option>
+              <option value="30">30 Hari</option>
+              <option value="0">LIFETIME (Permanen Tanpa Batas Waktu)</option>
+            </select>
           </div>
-        </form>
-      </div>
+          <div class="form-group">
+            <label class="form-label">Catatan Tambahan (Opsional)</label>
+            <input type="text" name="notes" class="form-input" placeholder="Event Marathon Bali 2026">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeGenerateModal()">Batal</button>
+          <button type="submit" class="btn btn-primary">Terbitkan Lisensi</button>
+        </div>
+      </form>
     </div>
+  </div>
+
+  <!-- MODAL: EXTEND LICENSE -->
+  <div id="extendModal" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Perpanjang Masa Aktif Lisensi</h3>
+        <button class="modal-close-btn" onclick="closeExtendModal()">✕</button>
+      </div>
+      <form method="POST">
+        <input type="hidden" name="action" value="extend">
+        <input type="hidden" name="license_id" id="extendLicId">
+        <div class="modal-body">
+          <p style="margin-bottom: 14px; font-size: 14px; color: var(--text-muted);">
+            Lisensi: <strong id="extendLicKeyText" style="color: var(--pine-primary); font-family: var(--font-mono);"></strong>
+          </p>
+          <div class="form-group">
+            <label class="form-label">Tambahan Durasi Masa Aktif</label>
+            <select name="extend_days" class="form-input">
+              <option value="7">+ 7 Hari</option>
+              <option value="30" selected>+ 30 Hari (1 Bulan)</option>
+              <option value="90">+ 90 Hari (3 Bulan)</option>
+              <option value="365">+ 365 Hari (1 Tahun)</option>
+              <option value="0">Ubah Menjadi LIFETIME (Permanen)</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeExtendModal()">Batal</button>
+          <button type="submit" class="btn btn-primary">Simpan Perpanjangan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: CREATE NEW USER (ADMIN ONLY) -->
+  <?php if (isAdmin()): ?>
+  <div id="createUserModal" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Tambah Pengguna Baru</h3>
+        <button class="modal-close-btn" onclick="closeCreateUserModal()">✕</button>
+      </div>
+      <form method="POST">
+        <input type="hidden" name="action" value="create_user">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Username (Login)</label>
+            <input type="text" name="new_username" class="form-input" placeholder="contoh: staff_jkt" required autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nama Lengkap</label>
+            <input type="text" name="new_name" class="form-input" placeholder="contoh: Ahmad Pratama" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Kata Sandi Awal</label>
+            <input type="password" name="new_password" class="form-input" placeholder="Minimal 6 karakter" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Role Hak Akses</label>
+            <select name="new_role" class="form-input">
+              <option value="staff" selected>👤 Staff CS (Lisensi & Unbind HWID)</option>
+              <option value="admin">🛡️ Administrator (Akses Penuh Server)</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeCreateUserModal()">Batal</button>
+          <button type="submit" class="btn btn-primary">Buat Pengguna</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: EDIT USER (ADMIN ONLY) -->
+  <div id="editUserModal" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Edit Pengguna</h3>
+        <button class="modal-close-btn" onclick="closeEditUserModal()">✕</button>
+      </div>
+      <form method="POST">
+        <input type="hidden" name="action" value="edit_user">
+        <input type="hidden" name="user_id" id="editUserId">
+        <div class="modal-body">
+          <p style="margin-bottom: 14px; font-size: 14px; color: var(--text-muted);">
+            Username: <strong id="editUsernameText" style="color: var(--pine-primary); font-family: var(--font-mono);"></strong>
+          </p>
+          <div class="form-group">
+            <label class="form-label">Nama Lengkap</label>
+            <input type="text" name="edit_name" id="editNameInput" class="form-input" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Role Hak Akses</label>
+            <select name="edit_role" id="editRoleSelect" class="form-input">
+              <option value="staff">👤 Staff CS (Lisensi & Unbind HWID)</option>
+              <option value="admin">🛡️ Administrator (Akses Penuh)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Reset Kata Sandi Baru (Kosongkan jika tidak diubah)</label>
+            <input type="password" name="reset_password" class="form-input" placeholder="Minimal 6 karakter jika diisi">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeEditUserModal()">Batal</button>
+          <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+        </div>
+      </form>
+    </div>
+  </div>
   <?php endif; ?>
 
   <script>
-    function toggleCustomDuration(val) {
-      const group = document.getElementById('customDurationGroup');
-      if (group) group.style.display = (val === 'custom') ? 'flex' : 'none';
+    function toggleMobileSidebar() {
+      const sb = document.getElementById('adminSidebar');
+      sb.classList.toggle('open');
     }
 
-    function copyText(text) {
-      navigator.clipboard.writeText(text);
-      alert('Master Key berhasil disalin ke clipboard:\n' + text);
+    // Generate Modal
+    function openGenerateModal() {
+      document.getElementById('generateModal').style.display = 'flex';
+    }
+    function closeGenerateModal() {
+      document.getElementById('generateModal').style.display = 'none';
     }
 
-    function filterTable() {
-      const q = document.getElementById('tableSearch').value.toLowerCase();
-      const rows = document.querySelectorAll('#licensesTable tbody tr');
-      rows.forEach(r => {
-        const text = r.textContent.toLowerCase();
-        r.style.display = text.includes(q) ? '' : 'none';
-      });
-    }
-
-    function filterTelemetryTable() {
-      const q = document.getElementById('telemetrySearch').value.toLowerCase();
-      const rows = document.querySelectorAll('#telemetryTable tbody tr');
-      rows.forEach(r => {
-        const text = r.textContent.toLowerCase();
-        r.style.display = text.includes(q) ? '' : 'none';
-      });
-    }
-
-    function openExtendModal(id, key, name, duration) {
-      document.getElementById('extendLicenseId').value = id;
-      document.getElementById('extendModalSub').innerHTML = 'Lisensi: <strong style="font-family: var(--font-mono); color: var(--primary-blue);">' + key + '</strong> (' + name + ')';
+    // Extend Modal
+    function openExtendModal(id, key) {
+      document.getElementById('extendLicId').value = id;
+      document.getElementById('extendLicKeyText').textContent = key;
       document.getElementById('extendModal').style.display = 'flex';
     }
-
     function closeExtendModal() {
       document.getElementById('extendModal').style.display = 'none';
     }
+
+    // Create User Modal
+    function openCreateUserModal() {
+      const modal = document.getElementById('createUserModal');
+      if (modal) modal.style.display = 'flex';
+    }
+    function closeCreateUserModal() {
+      const modal = document.getElementById('createUserModal');
+      if (modal) modal.style.display = 'none';
+    }
+
+    // Edit User Modal
+    function openEditUserModal(id, username, name, role) {
+      const modal = document.getElementById('editUserModal');
+      if (modal) {
+        document.getElementById('editUserId').value = id;
+        document.getElementById('editUsernameText').textContent = '@' + username;
+        document.getElementById('editNameInput').value = name;
+        document.getElementById('editRoleSelect').value = role;
+        modal.style.display = 'flex';
+      }
+    }
+    function closeEditUserModal() {
+      const modal = document.getElementById('editUserModal');
+      if (modal) modal.style.display = 'none';
+    }
   </script>
+<?php endif; ?>
+
 </body>
 </html>

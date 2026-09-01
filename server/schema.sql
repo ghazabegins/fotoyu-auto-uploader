@@ -40,15 +40,16 @@ CREATE TABLE IF NOT EXISTS `telemetry_logs` (
   INDEX `idx_created_at` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 3. Admin Users Database Table
+-- 3. Admin Users Database Table (Admin & Staff Roles)
 CREATE TABLE IF NOT EXISTS `admin_users` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `username` VARCHAR(50) UNIQUE NOT NULL,
   `password_hash` VARCHAR(255) NOT NULL,
   `name` VARCHAR(100) NOT NULL DEFAULT 'Administrator',
+  `role` VARCHAR(20) NOT NULL DEFAULT 'admin',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Default Admin Account (Username: admin, Password: admin123)
-INSERT IGNORE INTO `admin_users` (`username`, `password_hash`, `name`) 
-VALUES ('admin', '$2y$10$CAiPiwDX36jW/bmrK/bSvusMGXFPjgGLyi3CO6RYeDb2p5N6N0B9a', 'Super Administrator');
+-- Default Admin Account (Username: admin, Password: admin123, Role: admin)
+INSERT IGNORE INTO `admin_users` (`username`, `password_hash`, `name`, `role`) 
+VALUES ('admin', '$2y$10$CAiPiwDX36jW/bmrK/bSvusMGXFPjgGLyi3CO6RYeDb2p5N6N0B9a', 'Super Administrator', 'admin');

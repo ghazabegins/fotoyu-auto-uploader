@@ -11,7 +11,7 @@ define('DB_PASS', '');
 define('ADMIN_PASSWORD', 'admin123'); 
 
 // Connect to Database via PDO
-function getDBConnection() {
+function getDBConnection($exitOnFailure = true) {
     static $pdo = null;
     if ($pdo === null) {
         try {
@@ -22,6 +22,9 @@ function getDBConnection() {
                 PDO::ATTR_EMULATE_PREPARES => false,
             ]);
         } catch (PDOException $e) {
+            if (!$exitOnFailure) {
+                return null;
+            }
             header('Content-Type: application/json');
             http_response_code(500);
             echo json_encode([
@@ -136,7 +139,7 @@ function logServerTelemetry($pdo, $licenseKey, $actionType, $status = 'SUCCESS',
     }
 }
 
-// Auto-ensure admin_users table exists and seeds default admin account
+// Auto-ensure admin_users table exists, migrates role column, and seeds default admin account
 function ensureAdminUsersTable($pdo) {
     static $checked = false;
     if ($checked) return;
@@ -146,20 +149,44 @@ function ensureAdminUsersTable($pdo) {
             username VARCHAR(50) UNIQUE NOT NULL,
             password_hash VARCHAR(255) NOT NULL,
             name VARCHAR(100) NOT NULL DEFAULT 'Administrator',
+            role VARCHAR(20) NOT NULL DEFAULT 'admin',
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
         $pdo->exec($sql);
+
+        // Auto-migrate role column if table was created previously without it
+        try {
+            $checkCol = $pdo->query("SHOW COLUMNS FROM admin_users LIKE 'role'")->fetchAll();
+            if (empty($checkCol)) {
+                $pdo->exec("ALTER TABLE admin_users ADD COLUMN role VARCHAR(20) NOT NULL DEFAULT 'admin' AFTER name");
+            }
+        } catch (Exception $e) {
+            // Column might already exist
+        }
 
         // Seed default admin if empty
         $count = (int)$pdo->query("SELECT COUNT(*) FROM admin_users")->fetchColumn();
         if ($count === 0) {
             $defaultPassHash = password_hash(ADMIN_PASSWORD, PASSWORD_BCRYPT);
-            $stmt = $pdo->prepare("INSERT INTO admin_users (username, password_hash, name) VALUES (?, ?, ?)");
+            $stmt = $pdo->prepare("INSERT INTO admin_users (username, password_hash, name, role) VALUES (?, ?, ?, 'admin')");
             $stmt->execute(['admin', $defaultPassHash, 'Super Administrator']);
         }
         $checked = true;
     } catch (Exception $e) {
         // Silent catch
     }
+}
+
+// User Role Helper Functions
+function getCurrentUserRole() {
+    return $_SESSION['admin_role'] ?? 'admin';
+}
+
+function isAdmin() {
+    return getCurrentUserRole() === 'admin';
+}
+
+function isStaff() {
+    return getCurrentUserRole() === 'staff';
 }
 ?>
