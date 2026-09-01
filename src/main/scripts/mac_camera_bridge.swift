@@ -5,7 +5,7 @@ import ImageCaptureCore
 // Enterprise Apple ImageCaptureCore camera bridge for FotoSync PRO
 // Supports Nikon, Sony (PC Remote/MTP), Canon, Fuji, Lumix, and all USB PTP cameras on macOS.
 
-class CameraBridge: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate, ICCameraDeviceDownloadDelegate {
+@objc class CameraBridge: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate, ICCameraDeviceDownloadDelegate {
     let browser = ICDeviceBrowser()
     let destinationURL: URL
     var connectedCameras = [String: ICCameraDevice]()
@@ -15,21 +15,10 @@ class CameraBridge: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate, I
         self.destinationURL = URL(fileURLWithPath: targetDir)
         super.init()
         
-        // Ensure destination directory exists
         try? FileManager.default.createDirectory(at: self.destinationURL, withIntermediateDirectories: true, attributes: nil)
         
         browser.delegate = self
-        
-        // Listen to all local, shared, and Bonjour cameras
-        let mask = ICDeviceTypeMask(rawValue: 
-            ICDeviceTypeMask.camera.rawValue |
-            ICDeviceLocationTypeMask.local.rawValue |
-            ICDeviceLocationTypeMask.shared.rawValue |
-            ICDeviceLocationTypeMask.bonjour.rawValue |
-            ICDeviceLocationTypeMask.bluetooth.rawValue
-        ) ?? .camera
-        
-        browser.browsedDeviceTypeMask = mask
+        browser.browsedDeviceTypeMask = .camera
         browser.start()
         
         sendJson(["event": "bridge_ready", "targetDir": targetDir, "platform": "macOS"])
@@ -59,7 +48,6 @@ class CameraBridge: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate, I
             "mediaFilesCount": camera.mediaFiles?.count ?? 0
         ])
         
-        // Request opening session with camera device
         camera.requestOpenSession()
     }
 
@@ -75,14 +63,6 @@ class CameraBridge: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate, I
         ])
     }
 
-    func deviceBrowser(_ browser: ICDeviceBrowser, deviceDidChangeName device: ICDevice) {
-        // Device name updated
-    }
-
-    func deviceBrowser(_ browser: ICDeviceBrowser, deviceDidChangeSharingState device: ICDevice) {
-        // Sharing state updated
-    }
-
     // --- ICCameraDeviceDelegate ---
     func deviceDidBecomeReady(_ device: ICDevice) {
         guard let camera = device as? ICCameraDevice else { return }
@@ -94,7 +74,6 @@ class CameraBridge: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate, I
             "totalItems": camera.mediaFiles?.count ?? 0
         ])
         
-        // Enable tethering for Live Shutter shooting if supported by firmware
         camera.requestEnableTethering()
         camera.requestCapabilities()
         
@@ -119,7 +98,6 @@ class CameraBridge: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate, I
             "camera": camName
         ])
         
-        // Enable Live Shutter tethering mode
         camera.requestEnableTethering()
         camera.requestCapabilities()
         
@@ -141,29 +119,11 @@ class CameraBridge: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate, I
         processCameraFiles(cameraFiles, camera: camera)
     }
 
-    func cameraDevice(_ camera: ICCameraDevice, didRemove items: [ICCameraItem]) {
-        // Items deleted from camera
-    }
-
-    func cameraDevice(_ camera: ICCameraDevice, didReceiveThumbnail thumbnail: CGImage?, for item: ICCameraItem, error: Error?) {
-        // Thumbnail received
-    }
-
-    func cameraDevice(_ camera: ICCameraDevice, didReceiveMetadata metadata: [AnyHashable: Any]?, for item: ICCameraItem, error: Error?) {
-        // Metadata received
-    }
-
-    func cameraDeviceDidChangeCapability(_ camera: ICCameraDevice) {
-        // Capability updated
-    }
-
-    // --- File Processing & Ingest ---
     func processCameraFiles(_ files: [ICCameraFile], camera: ICCameraDevice) {
         for file in files {
             let filename = file.name ?? "photo.jpg"
             let ext = (filename as NSString).pathExtension.lowercased()
             
-            // Only process JPEG/JPG/PNG images for fast live shutter ingest
             guard ext == "jpg" || ext == "jpeg" || ext == "png" else { continue }
             
             let destFile = destinationURL.appendingPathComponent(filename)
@@ -178,43 +138,31 @@ class CameraBridge: NSObject, ICDeviceBrowserDelegate, ICCameraDeviceDelegate, I
 
     func downloadFile(_ file: ICCameraFile, camera: ICCameraDevice) {
         let filename = file.name ?? "IMG_\(Int(Date().timeIntervalSince1970)).jpg"
-        let camName = camera.name ?? "USB Camera"
-        
         let options: [ICDownloadOption: Any] = [
             .targetDirectory: destinationURL,
             .saveAsFilename: filename,
             .overwrite: true
         ]
 
-        camera.requestDownloadFile(file, options: options, downloadDelegate: self) { error, savedPath in
-            if let error = error {
-                self.sendJson([
-                    "event": "download_failed",
-                    "file": filename,
-                    "error": error.localizedDescription
-                ])
-            } else {
-                let finalPath = (savedPath != nil && !savedPath!.isEmpty) ? savedPath! : self.destinationURL.appendingPathComponent(filename).path
-                self.sendJson([
-                    "event": "photo_downloaded",
-                    "file": filename,
-                    "path": finalPath,
-                    "camera": camName
-                ])
-            }
-        }
+        camera.requestDownloadFile(file, options: options, downloadDelegate: self, didDownloadFileSelector: #selector(didDownloadFile(_:error:options:contextInfo:)), contextInfo: nil)
     }
 
     // --- ICCameraDeviceDownloadDelegate ---
-    func didDownloadFile(_ file: ICCameraFile, error: Error?, options: [String: Any], contextInfo: UnsafeMutableRawPointer?) {
+    @objc func didDownloadFile(_ file: ICCameraFile, error: Error?, options: [String: Any], contextInfo: UnsafeMutableRawPointer?) {
         let filename = file.name ?? "photo.jpg"
         let finalPath = destinationURL.appendingPathComponent(filename).path
-        if error == nil && FileManager.default.fileExists(atPath: finalPath) {
+        if let error = error {
+            sendJson([
+                "event": "download_failed",
+                "file": filename,
+                "error": error.localizedDescription
+            ])
+        } else {
             sendJson([
                 "event": "photo_downloaded",
                 "file": filename,
                 "path": finalPath,
-                "camera": "USB Camera"
+                "camera": file.device?.name ?? "USB Camera"
             ])
         }
     }
@@ -226,5 +174,4 @@ let targetDir = args.count > 1 ? args[1] : (FileManager.default.urls(for: .pictu
 
 let bridge = CameraBridge(targetDir: targetDir)
 
-// Spin RunLoop to listen for device connection and shutter events
 RunLoop.current.run()

@@ -52,9 +52,10 @@ jobs:
       - name: Compile Native Swift Camera Bridge (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          echo "Compiling native Swift camera bridge for macOS..."
+          echo "Compiling Universal Native Swift camera bridge for macOS..."
           swiftc -O src/main/scripts/mac_camera_bridge.swift -o src/main/scripts/mac_camera_bridge -framework Foundation -framework ImageCaptureCore
           chmod +x src/main/scripts/mac_camera_bridge
+          ls -la src/main/scripts/mac_camera_bridge
           echo "Native camera bridge compiled successfully!"
 
       - name: Compile & Package Application
