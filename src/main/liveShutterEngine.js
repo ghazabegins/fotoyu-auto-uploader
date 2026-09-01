@@ -336,7 +336,7 @@ class LiveShutterEngine {
 
       this.cableConfig.lastScanTime = new Date().toISOString();
 
-      // Check for CAMERA connection changes on Windows (macOS camera state is managed by macBridgeProcess)
+      // Check for CAMERA connection changes on Windows (WPD)
       if (process.platform === 'win32') {
         const wasCameraConnected = !!this.cableConfig.cameraDetails;
         const isCameraNowConnected = !!detectedCamera;
@@ -365,6 +365,49 @@ class LiveShutterEngine {
           this.cableConfig.connectedCamera = null;
           this.cableConfig.detectedDrive = null;
           this.cableConfig.activeDeviceType = null;
+        }
+      } else if (process.platform === 'darwin') {
+        // Dual-layer macOS Hardware USB Prober (covers Nikon Z6_2, Sony, Canon, Fuji)
+        const macCam = this.scanMacUsbCameras();
+        if (macCam) {
+          const wasCameraConnected = !!this.cableConfig.cameraDetails;
+          if (!wasCameraConnected) {
+            const defaultIngestDir = this.store.get('watchDir') || path.join(this.app.getPath('userData'), 'camera_ingest');
+            this.cableConfig.cameraDetails = {
+              name: macCam.name,
+              model: macCam.name,
+              path: defaultIngestDir,
+              type: 'camera'
+            };
+            this.cableConfig.connectedCamera = macCam.name;
+            this.cableConfig.detectedDrive = defaultIngestDir;
+            this.cableConfig.activeDeviceType = 'camera';
+            this.log('SUCCESS', `📸 KAMERA TERHUBUNG (macOS USB Hardware): "${macCam.name}"`);
+
+            const payload = {
+              deviceType: 'camera',
+              deviceName: macCam.name,
+              deviceIcon: '📷',
+              cameraName: macCam.name,
+              drivePath: defaultIngestDir,
+              description: `Kamera ${macCam.name} terdeteksi di port USB macOS. Siap Live Shutter Ingest!`,
+              timestamp: Date.now()
+            };
+            this.sendToRenderer('live-shutter:devicePluggedIn', payload);
+            this.sendToRenderer('live-shutter:cameraPluggedIn', payload);
+            this.updateUI();
+
+            if (!this.macBridgeProcess && this.cableConfig.enabled) {
+              this.startMacCameraBridge(defaultIngestDir);
+            }
+          }
+        } else if (this.cableConfig.cameraDetails && !this.macBridgeProcess) {
+          this.log('WARN', `🔌 Kamera ${this.cableConfig.connectedCamera || ''} Terputus dari port USB macOS.`);
+          this.cableConfig.cameraDetails = null;
+          this.cableConfig.connectedCamera = null;
+          this.cableConfig.detectedDrive = null;
+          this.cableConfig.activeDeviceType = null;
+          this.updateUI();
         }
       }
 
@@ -927,7 +970,63 @@ class LiveShutterEngine {
     this.sendToRenderer('live-shutter:statusUpdate', this.getStatus());
   }
 
-  // --- 4. MACOS APPLE IMAGECAPTURECORE USB CAMERA BRIDGE ---
+  // --- 4. MACOS HARDWARE USB CAMERA PROBE ---
+  scanMacUsbCameras() {
+    if (process.platform !== 'darwin') return null;
+    try {
+      const out = execSync('/usr/sbin/system_profiler SPUSBDataType -json -detailLevel basic', {
+        timeout: 2500,
+        encoding: 'utf8',
+        stdio: ['pipe', 'pipe', 'ignore']
+      });
+
+      if (!out || !out.trim()) return null;
+      const data = JSON.parse(out);
+
+      const findCameraInTree = (items) => {
+        if (!items || !Array.isArray(items)) return null;
+        for (const item of items) {
+          const name = (item._name || '').trim();
+          const vendorId = (item.vendor_id || '').toLowerCase();
+          const serial = (item.serial_num || '').trim();
+
+          const isNikon = vendorId.includes('0x04b0') || /nikon|z\s*6|z\s*7|z\s*8|z\s*9|z\s*5|z\s*30|z\s*50|z\s*fc|d850|d750/i.test(name);
+          const isSony = vendorId.includes('0x054c') || /sony|ilce-|dsc-|alpha/i.test(name);
+          const isCanon = vendorId.includes('0x04a9') || /canon|eos/i.test(name);
+          const isFuji = vendorId.includes('0x04cb') || /fujifilm|fuji|x-t|x-h|x-s|gfx/i.test(name);
+          const isPanasonic = vendorId.includes('0x04da') || /lumix|panasonic/i.test(name);
+          const isOlympus = vendorId.includes('0x07b4') || /olympus|om\s*system/i.test(name);
+
+          const isBuiltInWebcam = /facetime|apple|isight|built-in/i.test(name) || /apple/i.test(vendorId);
+
+          if (!isBuiltInWebcam && (isNikon || isSony || isCanon || isFuji || isPanasonic || isOlympus)) {
+            let cleanName = name;
+            if (isNikon && !cleanName.toLowerCase().includes('nikon')) cleanName = `Nikon ${cleanName}`;
+            if (isSony && !cleanName.toLowerCase().includes('sony')) cleanName = `Sony ${cleanName}`;
+            if (isCanon && !cleanName.toLowerCase().includes('canon')) cleanName = `Canon ${cleanName}`;
+            if (isFuji && !cleanName.toLowerCase().includes('fuji')) cleanName = `Fujifilm ${cleanName}`;
+            return {
+              name: cleanName,
+              vendorId,
+              serial
+            };
+          }
+
+          if (item._items) {
+            const nested = findCameraInTree(item._items);
+            if (nested) return nested;
+          }
+        }
+        return null;
+      };
+
+      return findCameraInTree(data.SPUSBDataType);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // --- 5. MACOS APPLE IMAGECAPTURECORE USB CAMERA BRIDGE ---
   startMacCameraBridge(targetDir) {
     if (process.platform !== 'darwin') return;
     if (this.macBridgeProcess) return;

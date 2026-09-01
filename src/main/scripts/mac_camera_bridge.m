@@ -1,15 +1,17 @@
+#import <Cocoa/Cocoa.h>
 #import <Foundation/Foundation.h>
 #import <ImageCaptureCore/ImageCaptureCore.h>
 
 // mac_camera_bridge.m
 // Enterprise Apple ImageCaptureCore camera bridge for FotoSync PRO
-// Native Objective-C / ARC engine for ultra-fast, zero-overhead camera detection and live shutter download.
+// Native Cocoa / Objective-C engine with NSApplication environment for full icdd XPC daemon integration.
 
 @interface CameraBridge : NSObject <ICDeviceBrowserDelegate, ICCameraDeviceDelegate>
 @property (nonatomic, strong) ICDeviceBrowser *browser;
 @property (nonatomic, strong) NSString *destinationPath;
 @property (nonatomic, strong) NSMutableSet<NSString *> *downloadedFiles;
 @property (nonatomic, strong) NSMutableDictionary<NSString *, ICCameraDevice *> *connectedCameras;
+@property (nonatomic, strong) NSTimer *pollTimer;
 @end
 
 @implementation CameraBridge
@@ -21,7 +23,7 @@
         self.downloadedFiles = [NSMutableSet set];
         self.connectedCameras = [NSMutableDictionary dictionary];
 
-        // Ensure target directory exists
+        // Ensure destination folder exists
         [[NSFileManager defaultManager] createDirectoryAtPath:self.destinationPath
                                   withIntermediateDirectories:YES
                                                    attributes:nil
@@ -38,8 +40,29 @@
             @"targetDir": targetDir,
             @"platform": @"macOS"
         }];
+
+        // Periodic scanner to catch devices already attached before bridge start
+        self.pollTimer = [NSTimer scheduledTimerWithTimeInterval:2.0
+                                                          target:self
+                                                        selector:@selector(checkExistingDevices)
+                                                        userInfo:nil
+                                                         repeats:YES];
     }
     return self;
+}
+
+- (void)checkExistingDevices {
+    if (!self.browser || !self.browser.devices) return;
+    for (ICDevice *device in self.browser.devices) {
+        if ([device isKindOfClass:[ICCameraDevice class]]) {
+            ICCameraDevice *camera = (ICCameraDevice *)device;
+            NSString *camName = camera.name ?: @"Kamera USB";
+            NSString *camId = [NSString stringWithFormat:@"%@_%lu", camName, (unsigned long)camera.hash];
+            if (!self.connectedCameras[camId]) {
+                [self deviceBrowser:self.browser didAddDevice:camera moreComing:NO];
+            }
+        }
+    }
 }
 
 - (void)sendJSON:(NSDictionary *)dict {
@@ -201,6 +224,10 @@
 
 int main(int argc, const char * argv[]) {
     @autoreleasepool {
+        // Initialize Cocoa runtime environment so icdd dispatches XPC camera events
+        NSApplicationLoad();
+        [NSApplication sharedApplication];
+
         NSString *targetDir = @"/tmp";
         if (argc > 1) {
             targetDir = [NSString stringWithUTF8String:argv[1]];

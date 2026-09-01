@@ -55,7 +55,7 @@ jobs:
           echo "Compiling Native Camera Bridge for macOS..."
           SDK_PATH=$(xcrun --show-sdk-path)
           echo "Using macOS SDK at: $SDK_PATH"
-          clang -O2 -fobjc-arc -isysroot "$SDK_PATH" -Wno-everything -framework Foundation -framework ImageCaptureCore src/main/scripts/mac_camera_bridge.m -o src/main/scripts/mac_camera_bridge || true
+          clang -O2 -fobjc-arc -isysroot "$SDK_PATH" -Wno-everything -framework Cocoa -framework Foundation -framework ImageCaptureCore src/main/scripts/mac_camera_bridge.m -o src/main/scripts/mac_camera_bridge || true
           
           if [ -f "src/main/scripts/mac_camera_bridge" ]; then
             chmod +x src/main/scripts/mac_camera_bridge
