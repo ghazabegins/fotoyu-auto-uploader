@@ -1,0 +1,45 @@
+====================================================================
+           PANDUAN MEMBUKA FOTOYU UPLOADER PRO DI MACOS
+====================================================================
+
+Terima kasih telah menggunakan Fotoyu Uploader Pro!
+Karena aplikasi ini didistribusikan secara langsung (tanpa Mac App Store),
+fitur keamanan macOS (Apple Gatekeeper) memerlukan izin awal saat
+pertama kali aplikasi dibuka.
+
+--------------------------------------------------------------------
+CARA 1: BUKA OTOMATIS 1-KLIK (PALING MUDAH & CEPAT)
+--------------------------------------------------------------------
+1. Seret (drag) icon "Fotoyu Uploader Pro" ke dalam folder "Applications".
+2. Klik dua kali file "Buka_Aplikasi_Mac.command" yang ada di folder ini.
+3. Aplikasi akan otomatis membuka izin keamanan dan langsung berjalan!
+
+--------------------------------------------------------------------
+CARA 2: BUKA MANUAL LEWAT FINDER (TANPA SCRIPT)
+--------------------------------------------------------------------
+1. Seret "Fotoyu Uploader Pro" ke folder "Applications".
+2. Buka folder "Applications" di Mac Anda.
+3. KLIK KANAN (atau tahan tombol CONTROL lalu klik) pada 
+   "Fotoyu Uploader Pro".
+4. Pilih menu "Open" (Buka).
+5. Pada jendela peringatan yang muncul, klik tombol "Open" (Buka).
+   (Catatan: Langkah ini HANYA perlu dilakukan SEKALI saja.
+    Setelah itu, aplikasi bisa dibuka langsung dengan klik biasa).
+
+--------------------------------------------------------------------
+CARA 3: JIKA MUNCUL PESAN "APLIKASI RUSAK" (DAMAGED / TRASH)
+--------------------------------------------------------------------
+Jika macOS menampilkan pesan bahwa aplikasi rusak atau tidak dapat diverifikasi:
+1. Buka aplikasi "Terminal" di Mac Anda (bisa dicari lewat Spotlight / CMD + Spasi).
+2. Salin dan tempel (paste) perintah berikut di Terminal, lalu tekan Enter:
+
+   xattr -cr "/Applications/Fotoyu Uploader Pro.app"
+
+3. Buka kembali aplikasi Fotoyu Uploader Pro seperti biasa. Selesai!
+
+--------------------------------------------------------------------
+BANTUAN & DUKUNGAN
+--------------------------------------------------------------------
+Jika Anda membutuhkan bantuan lebih lanjut, silakan hubungi tim support Fotoyu
+atau kunjungi: https://github.com/ghazabegins/fotoyu-auto-uploader
+====================================================================

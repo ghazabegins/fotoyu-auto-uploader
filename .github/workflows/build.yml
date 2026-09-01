@@ -28,11 +28,11 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            target_name: Windows (EXE & ZIP)
+            target_name: Windows (EXE Installer)
             artifact_name: fotoyu-uploader-windows
             build_script: npm run build:win
           - os: macos-latest
-            target_name: macOS (DMG & ZIP)
+            target_name: macOS (DMG Package)
             artifact_name: fotoyu-uploader-macos
             build_script: npm run build:mac
 
@@ -54,6 +54,27 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ${{ matrix.build_script }}
 
+      - name: Inject panduan.txt & launcher into macOS DMG
+        if: matrix.os == 'macos-latest'
+        run: |
+          for dmg in dist/*.dmg; do
+            echo "Injecting panduan.txt into $dmg..."
+            hdiutil convert "$dmg" -format UDRW -o "dist/temp_rw.dmg"
+            MOUNT_OUTPUT=$(hdiutil attach "dist/temp_rw.dmg" -nobrowse)
+            MOUNT_DIR=$(echo "$MOUNT_OUTPUT" | grep -o '/Volumes/.*' | head -n 1)
+            echo "Mounted volume at: $MOUNT_DIR"
+            
+            cp "build/panduan.txt" "$MOUNT_DIR/PANDUAN_BUKA_APLIKASI.txt"
+            cp "build/Buka_Aplikasi_Mac.command" "$MOUNT_DIR/Buka_Aplikasi_Mac.command"
+            chmod +x "$MOUNT_DIR/Buka_Aplikasi_Mac.command"
+            
+            hdiutil detach "$MOUNT_DIR" -force
+            rm -f "$dmg"
+            hdiutil convert "dist/temp_rw.dmg" -format ULFO -o "$dmg"
+            rm -f "dist/temp_rw.dmg"
+            echo "Successfully updated $dmg with panduan and launcher!"
+          done
+
       - name: Upload Build Artifacts to Actions
         uses: actions/upload-artifact@v4
         with:
@@ -62,8 +83,6 @@ jobs:
           path: |
             dist/*.exe
             dist/*.dmg
-            dist/*.zip
-            dist/*.blockmap
 
   release:
     name: Publish to GitHub Releases
@@ -95,6 +114,5 @@ jobs:
           files: |
             release_assets/*.exe
             release_assets/*.dmg
-            release_assets/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
