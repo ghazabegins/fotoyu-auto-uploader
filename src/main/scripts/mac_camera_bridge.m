@@ -5,7 +5,7 @@
 // Enterprise Apple ImageCaptureCore camera bridge for FotoSync PRO
 // Native Objective-C / ARC engine for ultra-fast, zero-overhead camera detection and live shutter download.
 
-@interface CameraBridge : NSObject <ICDeviceBrowserDelegate, ICCameraDeviceDelegate, ICCameraDeviceDownloadDelegate>
+@interface CameraBridge : NSObject <ICDeviceBrowserDelegate, ICCameraDeviceDelegate>
 @property (nonatomic, strong) ICDeviceBrowser *browser;
 @property (nonatomic, strong) NSString *destinationPath;
 @property (nonatomic, strong) NSMutableSet<NSString *> *downloadedFiles;
@@ -180,7 +180,7 @@
                     contextInfo:NULL];
 }
 
-#pragma mark - ICCameraDeviceDownloadDelegate
+#pragma mark - Download Callback Selector
 
 - (void)didDownloadFile:(ICCameraFile *)file error:(NSError *)error options:(NSDictionary *)options contextInfo:(void *)contextInfo {
     NSString *filename = file.name ?: @"photo.jpg";
