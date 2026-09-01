@@ -343,42 +343,45 @@ class LiveShutterEngine {
           this.cableConfig.activeDeviceType = null;
         }
       } else if (process.platform === 'darwin') {
-        // Dual-layer macOS Hardware USB Prober (covers Nikon Z6_2, Sony, Canon, Fuji)
+        // Dual-layer macOS Hardware USB Prober (covers Nikon Z 6_2, Sony, Canon, Fuji)
         const macCam = this.scanMacUsbCameras();
         if (macCam) {
           const wasCameraConnected = !!this.cableConfig.cameraDetails;
           if (!wasCameraConnected) {
-            const defaultIngestDir = this.store.get('watchDir') || path.join(this.app.getPath('userData'), 'camera_ingest');
+            const picturesDir = this.app.getPath('pictures') || path.join(os.homedir(), 'Pictures');
+            const targetIngestDir = this.store.get('watchDir') || path.join(picturesDir, 'FotoSync_Live');
+
             this.cableConfig.cameraDetails = {
               name: macCam.name,
               model: macCam.name,
-              path: defaultIngestDir,
+              path: targetIngestDir,
               type: 'camera'
             };
             this.cableConfig.connectedCamera = macCam.name;
-            this.cableConfig.detectedDrive = defaultIngestDir;
+            this.cableConfig.detectedDrive = targetIngestDir;
             this.cableConfig.activeDeviceType = 'camera';
-            this.log('SUCCESS', `📸 KAMERA TERHUBUNG (macOS USB Hardware): "${macCam.name}"`);
+            this.log('SUCCESS', `📸 KAMERA TERHUBUNG (Apple Image Capture Hidden Engine): "${macCam.name}"`);
 
             const payload = {
               deviceType: 'camera',
               deviceName: macCam.name,
               deviceIcon: '📷',
               cameraName: macCam.name,
-              drivePath: defaultIngestDir,
-              description: `Kamera ${macCam.name} terdeteksi di port USB macOS. Siap Live Shutter Ingest!`,
+              drivePath: targetIngestDir,
+              description: `Kamera ${macCam.name} terhubung (Image Capture Hidden Ingest). Siap Live Shutter!`,
               timestamp: Date.now()
             };
             this.sendToRenderer('live-shutter:devicePluggedIn', payload);
             this.sendToRenderer('live-shutter:cameraPluggedIn', payload);
             this.updateUI();
 
-            if (!this.macBridgeProcess && this.cableConfig.enabled) {
-              this.startMacCameraBridge(defaultIngestDir);
+            if (this.cableConfig.enabled) {
+              this.startMacHiddenImageCaptureEngine(targetIngestDir);
             }
           }
-        } else if (this.cableConfig.cameraDetails && !this.macBridgeProcess) {
+        } else if (this.cableConfig.cameraDetails) {
           this.log('WARN', `🔌 Kamera ${this.cableConfig.connectedCamera || ''} Terputus dari port USB macOS.`);
+          this.stopMacHiddenImageCaptureEngine();
           this.cableConfig.cameraDetails = null;
           this.cableConfig.connectedCamera = null;
           this.cableConfig.detectedDrive = null;
@@ -1002,37 +1005,144 @@ class LiveShutterEngine {
     }
   }
 
-  // --- 5. MACOS APPLE IMAGECAPTURECORE USB CAMERA BRIDGE ---
+  // --- 5. RESOLVE MACOS NATIVE CAMERA BRIDGE BINARY ---
+  resolveMacBinaryPath() {
+    const candidates = [
+      path.join(process.resourcesPath || '', 'mac_camera_bridge'),
+      path.join(process.resourcesPath || '', 'app.asar.unpacked', 'src', 'main', 'scripts', 'mac_camera_bridge'),
+      path.join(__dirname, 'scripts', 'mac_camera_bridge').replace('app.asar', 'app.asar.unpacked'),
+      path.join(__dirname, 'scripts', 'mac_camera_bridge'),
+      path.join(this.app.getAppPath(), 'src', 'main', 'scripts', 'mac_camera_bridge')
+    ];
+
+    for (const p of candidates) {
+      if (p && fs.existsSync(p)) {
+        return p;
+      }
+    }
+    return null;
+  }
+
+  // --- 6. MACOS HIDDEN IMAGE CAPTURE INGEST ENGINE (METODE 1) ---
+  startMacHiddenImageCaptureEngine(targetDir) {
+    if (process.platform !== 'darwin') return;
+
+    const picturesDir = this.app.getPath('pictures') || path.join(os.homedir(), 'Pictures');
+    this.macHiddenTargetDir = targetDir || this.store.get('watchDir') || path.join(picturesDir, 'FotoSync_Live');
+
+    if (!fs.existsSync(this.macHiddenTargetDir)) {
+      try { fs.mkdirSync(this.macHiddenTargetDir, { recursive: true }); } catch (e) {}
+    }
+
+    // Set watchDir store so UI and file monitoring are unified
+    this.store.set('watchDir', this.macHiddenTargetDir);
+
+    // 1. Launch Apple Image Capture 100% in hidden background mode (no GUI window shown)
+    try {
+      exec('/usr/bin/open -g -j -a "Image Capture"', () => {});
+      this.log('INFO', `🍏 [macOS] Apple Image Capture Engine dijalankan di latar belakang (Hidden Mode: open -g -j).`);
+    } catch (e) {}
+
+    // 2. Start Real-Time Live Shutter Watcher on macHiddenTargetDir
+    if (!this.macFolderWatcher && fs.existsSync(this.macHiddenTargetDir)) {
+      try {
+        this.macFolderWatcher = fs.watch(this.macHiddenTargetDir, (eventType, filename) => {
+          if (filename && /\.(jpg|jpeg|png)$/i.test(filename) && !filename.startsWith('.')) {
+            const fullPath = path.join(this.macHiddenTargetDir, filename);
+            setTimeout(() => {
+              if (fs.existsSync(fullPath) && !this.syncedCameraFiles.has(filename)) {
+                this.onLiveShutterReceived(fullPath, 'Apple Image Capture (Hidden Ingest)', this.cableConfig.connectedCamera || 'Kamera USB');
+              }
+            }, 200);
+          }
+        });
+        this.log('INFO', `🍏 [macOS] Real-Time Live Shutter Watcher aktif di folder: "${this.macHiddenTargetDir}"`);
+      } catch (eWatcher) {}
+    }
+
+    // 3. Trigger immediate background sync
+    this.triggerMacHiddenImageCaptureDownload();
+
+    // 4. Start periodic background sync while camera is active
+    if (!this.macHiddenSyncInterval) {
+      this.macHiddenSyncInterval = setInterval(() => {
+        if (this.cableConfig.cameraDetails) {
+          this.triggerMacHiddenImageCaptureDownload();
+        }
+      }, 3500);
+    }
+  }
+
+  triggerMacHiddenImageCaptureDownload() {
+    if (process.platform !== 'darwin') return;
+    const targetDir = this.macHiddenTargetDir;
+    if (!targetDir || !fs.existsSync(targetDir)) return;
+
+    try {
+      exec('/usr/bin/open -g -j -a "Image Capture"', () => {});
+
+      const safeDir = targetDir.replace(/"/g, '\\"');
+      const appleScript = `
+        tell application "Image Capture"
+          set devList to devices
+          repeat with aDevice in devList
+            try
+              set targetFolder to POSIX file "${safeDir}" as alias
+              download aDevice to targetFolder
+            end try
+          end repeat
+        end tell
+      `;
+
+      exec(`/usr/bin/osascript -e '${appleScript.replace(/'/g, "'\\''")}'`, { timeout: 12000 }, () => {});
+    } catch (e) {}
+  }
+
+  stopMacHiddenImageCaptureEngine() {
+    if (this.macHiddenSyncInterval) {
+      clearInterval(this.macHiddenSyncInterval);
+      this.macHiddenSyncInterval = null;
+    }
+    if (this.macFolderWatcher) {
+      try { this.macFolderWatcher.close(); } catch (e) {}
+      this.macFolderWatcher = null;
+    }
+  }
+
+  // --- 7. MACOS APPLE IMAGECAPTURECORE USB CAMERA BRIDGE ---
   startMacCameraBridge(targetDir) {
     if (process.platform !== 'darwin') return;
     if (this.macBridgeProcess) return;
+
+    if (this.macBridgeFailed && (this.macBridgeRestartCount || 0) >= 3) {
+      return; // Prevent restart spam loop if binary failed quickly
+    }
 
     if (!fs.existsSync(targetDir)) {
       fs.mkdirSync(targetDir, { recursive: true });
     }
 
-    let binaryPath = path.join(__dirname, 'scripts', 'mac_camera_bridge');
-    if (binaryPath.includes('app.asar')) {
-      binaryPath = binaryPath.replace('app.asar', 'app.asar.unpacked');
-    }
-
+    const binaryPath = this.resolveMacBinaryPath();
     let scriptPath = path.join(__dirname, 'scripts', 'mac_camera_bridge.swift');
     if (scriptPath.includes('app.asar')) {
       scriptPath = scriptPath.replace('app.asar', 'app.asar.unpacked');
     }
 
     try {
-      if (fs.existsSync(binaryPath)) {
+      if (binaryPath) {
         try { fs.chmodSync(binaryPath, 0o755); } catch (e) {}
         this.macBridgeProcess = spawn(binaryPath, [targetDir]);
         this.log('INFO', `🍏 [macOS] Apple ImageCaptureCore Camera Bridge aktif (Native Binary).`);
-      } else if (fs.existsSync(scriptPath)) {
+      } else if (fs.existsSync(scriptPath) && fs.existsSync('/usr/bin/swift')) {
         this.macBridgeProcess = spawn('/usr/bin/swift', [scriptPath, targetDir]);
         this.log('INFO', `🍏 [macOS] Apple ImageCaptureCore Camera Bridge aktif (Swift Interpreter).`);
       } else {
-        this.log('WARN', `[macOS Bridge] File bridge kamera tidak ditemukan di ${scriptPath}`);
+        this.macBridgeFailed = true;
+        this.log('WARN', `[macOS Bridge] File binary bridge kamera belum terpasang di Resources.`);
         return;
       }
+
+      this.macBridgeStartTime = Date.now();
 
       let buffer = '';
       this.macBridgeProcess.stdout.on('data', (data) => {
@@ -1045,6 +1155,8 @@ class LiveShutterEngine {
           try {
             const ev = JSON.parse(line.trim());
             if (ev.event === 'camera_connected') {
+              this.macBridgeRestartCount = 0;
+              this.macBridgeFailed = false;
               this.cableConfig.connectedCamera = ev.camera;
               this.cableConfig.cameraDetails = {
                 name: ev.camera,
@@ -1090,12 +1202,23 @@ class LiveShutterEngine {
 
       this.macBridgeProcess.on('close', (code) => {
         this.macBridgeProcess = null;
+        const runtime = Date.now() - (this.macBridgeStartTime || 0);
+
+        if (runtime < 3000) {
+          this.macBridgeRestartCount = (this.macBridgeRestartCount || 0) + 1;
+          if (this.macBridgeRestartCount >= 3) {
+            this.macBridgeFailed = true;
+            this.log('WARN', `[macOS Camera Bridge] Berhenti cepat (exit code ${code}). Menahan restart agar tidak spam log.`);
+            return;
+          }
+        }
+
         if (code !== 0 && code !== null) {
           this.log('WARN', `[macOS Camera Bridge] Berhenti (exit code ${code})`);
         }
       });
     } catch (err) {
-      this.log('ERROR', `Gagal menjalankan macOS Camera Bridge: ${err.message}`);
+      this.log('ERROR', `[macOS Bridge] Gagal memulai proses bridge: ${err.message}`);
     }
   }
 
