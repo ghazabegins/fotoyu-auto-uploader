@@ -7,7 +7,7 @@
     "start": "electron .",
     "build": "electron-builder build --publish never",
     "build:win": "electron-builder build --win --publish never",
-    "build:mac": "electron-builder build --mac --arm64 --publish never"
+    "build:mac": "electron-builder build --mac --arm64 --x64 --publish never"
   },
   "keywords": [
     "electron",
@@ -24,7 +24,8 @@
     "axios": "^1.6.8",
     "chokidar": "^3.6.0",
     "electron-store": "^8.1.0",
-    "form-data": "^4.0.0"
+    "form-data": "^4.0.0",
+    "ftp-srv": "^4.6.3"
   },
   "devDependencies": {
     "electron": "^29.1.5",
@@ -52,8 +53,20 @@
       "gatekeeperAssess": false,
       "identity": null,
       "target": [
-        "dmg",
-        "zip"
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
       ]
     },
     "dmg": {
@@ -84,8 +97,8 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "FotoSync PRO",
-      "uninstallDisplayName": "Uninstall FotoSync PRO",
+      "shortcutName": "Fotoyu Uploader Pro",
+      "uninstallDisplayName": "Uninstall Fotoyu Uploader Pro",
       "perMachine": false,
       "allowElevation": true,
       "runAfterFinish": true

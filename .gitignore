@@ -23,3 +23,4 @@ Thumbs.db
 # Test & Local sample ingest folders
 camera_ingest/
 tests/
+scratch_test_dir/

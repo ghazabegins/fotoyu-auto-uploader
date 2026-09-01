@@ -29,6 +29,7 @@ class UploaderEngine {
 
     // History Persistence File
     this.historyFilePath = path.join(this.app.getPath('userData'), 'uploaded_history.json');
+    this.uploadedFilenames = new Set();
     this.uploadedRegistry = this.loadHistory();
 
     // Cache of queue item statuses for UI rendering
@@ -40,11 +41,17 @@ class UploaderEngine {
       if (fs.existsSync(this.historyFilePath)) {
         const raw = fs.readFileSync(this.historyFilePath, 'utf8');
         const data = JSON.parse(raw);
-        return new Set(Array.isArray(data) ? data : []);
+        const set = new Set(Array.isArray(data) ? data : []);
+        this.uploadedFilenames = new Set();
+        for (const p of set) {
+          this.uploadedFilenames.add(path.basename(p));
+        }
+        return set;
       }
     } catch (err) {
       console.error('Failed to load upload history:', err);
     }
+    this.uploadedFilenames = new Set();
     return new Set();
   }
 
@@ -59,6 +66,7 @@ class UploaderEngine {
 
   clearHistory() {
     this.uploadedRegistry.clear();
+    this.uploadedFilenames.clear();
     this.queueItemsMap.clear();
     this.queue = [];
     this.stats = { queued: 0, uploaded: 0, failed: 0, retrying: 0 };
@@ -252,8 +260,9 @@ class UploaderEngine {
       return; // Skip non-image files
     }
 
-    // Check if already uploaded
-    if (this.uploadedRegistry.has(filePath)) {
+    // Check if already uploaded (by full path OR by filename across different folders)
+    const filename = path.basename(filePath);
+    if (this.uploadedRegistry.has(filePath) || this.uploadedFilenames.has(filename)) {
       return;
     }
 
@@ -334,6 +343,7 @@ class UploaderEngine {
           this.activeUploads--;
           this.stats.uploaded++;
           this.uploadedRegistry.add(filePath);
+          this.uploadedFilenames.add(item.filename);
           this.saveHistory();
 
           // Increment daily upload counter
@@ -360,6 +370,7 @@ class UploaderEngine {
             item.status = 'skipped';
             item.error = 'Duplikat (Sudah ada di Fotoyu)';
             this.uploadedRegistry.add(filePath);
+            this.uploadedFilenames.add(item.filename);
             this.saveHistory();
             this.log('WARN', `⏩ Skipping ${item.filename}: Foto sudah pernah diunggah ke Fotoyu.`);
           } else {

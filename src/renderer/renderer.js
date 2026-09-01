@@ -209,8 +209,20 @@ async function loadInitialSettings() {
   }
 }
 
-function applyTheme(theme) {
+let themeTransitionTimeout = null;
+
+function applyTheme(theme, animate = false) {
   const isDark = theme === 'dark';
+
+  if (animate) {
+    document.body.classList.add('theme-transitioning');
+    if (themeTransitionTimeout) clearTimeout(themeTransitionTimeout);
+    themeTransitionTimeout = setTimeout(() => {
+      document.body.classList.remove('theme-transitioning');
+      themeTransitionTimeout = null;
+    }, 450);
+  }
+
   if (isDark) {
     document.body.classList.add('dark-mode');
   } else {
@@ -695,13 +707,13 @@ function setupFormHandlers() {
     }
   });
 
-  // Mode Gelap Toggle Switch Handler
+  // Mode Gelap Toggle Switch Handler (Settings Tab)
   const darkModeToggleSwitch = document.getElementById('darkModeToggleSwitch');
   if (darkModeToggleSwitch) {
     darkModeToggleSwitch.addEventListener('change', async (e) => {
       const isDark = e.target.checked;
       const newTheme = isDark ? 'dark' : 'light';
-      applyTheme(newTheme);
+      applyTheme(newTheme, true);
       await window.electronAPI.saveSettings({ theme: newTheme });
       showToast(isDark ? 'Mode Gelap Diaktifkan' : 'Mode Terang Diaktifkan');
     });
@@ -1510,17 +1522,12 @@ function setupLiveShutterHandlers() {
         pill.classList.add('active');
 
         const selectedBrand = pill.getAttribute('data-brand');
-        const brandItems = document.querySelectorAll('.brand-item');
-
-        brandItems.forEach(item => {
-          if (selectedBrand === 'all') {
-            item.style.display = 'block';
+        const panels = document.querySelectorAll('.camera-brand-panel');
+        panels.forEach(panel => {
+          if (panel.id === `guide-panel-${selectedBrand}`) {
+            panel.classList.remove('hidden');
           } else {
-            if (item.classList.contains(selectedBrand)) {
-              item.style.display = 'block';
-            } else {
-              item.style.display = 'none';
-            }
+            panel.classList.add('hidden');
           }
         });
       });
@@ -1565,42 +1572,117 @@ function setupLiveShutterHandlers() {
     setupSdCardDetectModal();
 
     if (window.electronAPI.onLiveCameraPluggedIn) {
-      window.electronAPI.onLiveCameraPluggedIn((plugData) => {
+      window.electronAPI.onLiveCameraPluggedIn(async (plugData) => {
+        // Robust detection: If drive letter or macOS /Volumes has DCIM or deviceType is sdcard, it is an SD Card!
+        const isSdCard = plugData.deviceType === 'sdcard' || 
+                         (plugData.drivePath && (/^[A-Z]:[\\\/]/i.test(plugData.drivePath) || plugData.drivePath.startsWith('/Volumes/')) && plugData.drivePath.toUpperCase().includes('DCIM')) ||
+                         (plugData.cameraName && plugData.cameraName.toLowerCase().includes('sd card'));
+
+        pendingDeviceType = isSdCard ? 'sdcard' : 'camera';
+        pendingDeviceName = plugData.deviceName || plugData.cameraName || (isSdCard ? 'SD Card' : 'Kamera');
         pendingPlugDrivePath = plugData.drivePath;
-        const sdCardDetectModal = document.getElementById('sdCardDetectModal');
+
+        const sdCardModalIcon = document.getElementById('sdCardModalIcon');
+        const sdCardModalTitle = document.getElementById('sdCardModalTitle');
+        const sdCardDetectSubtitle = document.getElementById('sdCardDetectSubtitle');
         const sdCardDetectPath = document.getElementById('sdCardDetectPath');
-        
-        if (sdCardDetectPath) {
-          sdCardDetectPath.textContent = plugData.drivePath;
+        const cameraFolderPickerSection = document.getElementById('cameraFolderPickerSection');
+        const cameraIngestPathInput = document.getElementById('cameraIngestPathInput');
+        const sdCardModalActionTitle = document.getElementById('sdCardModalActionTitle');
+        const sdCardModalActionDesc = document.getElementById('sdCardModalActionDesc');
+        const sdCardConfirmBtn = document.getElementById('sdCardConfirmBtn');
+
+        if (isSdCard) {
+          // --- ALUR SDCARD ---
+          if (sdCardModalIcon) sdCardModalIcon.textContent = '💾';
+          if (sdCardModalTitle) sdCardModalTitle.textContent = 'SD Card Terdeteksi!';
+          if (sdCardDetectSubtitle) {
+            sdCardDetectSubtitle.innerHTML = `Terhubung pada lokasi:<br/><code id="sdCardDetectPath" style="font-size: 12px; font-weight: 700; background: var(--bg-card-sub, #FAF8F5); color: var(--primary-blue); padding: 5px 12px; border-radius: 8px; word-break: break-all; margin-top: 6px; display: inline-block; border: 1px solid var(--border-subtle, #DFD9CE);">${plugData.drivePath}</code>`;
+          } else if (sdCardDetectPath) {
+            sdCardDetectPath.textContent = plugData.drivePath;
+          }
+
+          // Sembunyikan pemilih folder kamera pada SD Card
+          if (cameraFolderPickerSection) cameraFolderPickerSection.classList.add('hidden');
+
+          if (sdCardModalActionTitle) sdCardModalActionTitle.textContent = 'Tambahkan dalam antrian upload?';
+          if (sdCardModalActionDesc) sdCardModalActionDesc.textContent = 'Semua foto di dalam SD Card ini akan otomatis dimasukkan ke antrean upload dan folder ini langsung dipantau tanpa Anda perlu memilih folder lagi.';
+          if (sdCardConfirmBtn) sdCardConfirmBtn.textContent = '⚡ Konfirmasi & Tambahkan ke Antrian';
+
+          showToast(`💾 SD Card Terdeteksi: Drive ${plugData.driveLetter || 'Removable'}`);
+        } else {
+          // --- ALUR KAMERA ---
+          if (sdCardModalIcon) sdCardModalIcon.textContent = '📷';
+          if (sdCardModalTitle) sdCardModalTitle.textContent = 'Kamera Terhubung!';
+          if (sdCardDetectSubtitle) {
+            sdCardDetectSubtitle.innerHTML = `Kamera Terdeteksi:<br/><code id="sdCardDetectPath" style="font-size: 12px; font-weight: 700; background: var(--bg-card-sub, #FAF8F5); color: var(--primary-blue); padding: 5px 12px; border-radius: 8px; word-break: break-all; margin-top: 6px; display: inline-block; border: 1px solid var(--border-subtle, #DFD9CE);">${pendingDeviceName} (Kabel USB Direct)</code>`;
+          } else if (sdCardDetectPath) {
+            sdCardDetectPath.textContent = `${pendingDeviceName} (Kabel USB Direct)`;
+          }
+
+          // Tampilkan pemilih folder penyimpanan pada modal kamera
+          if (cameraFolderPickerSection) cameraFolderPickerSection.classList.remove('hidden');
+
+          // Isi default folder penyimpanan kamera jika ada
+          let currentWatchDir = '';
+          try {
+            const curSettings = await window.electronAPI.getSettings();
+            currentWatchDir = curSettings?.watchDir || '';
+          } catch (e) {}
+
+          if (cameraIngestPathInput) {
+            cameraIngestPathInput.value = currentWatchDir || plugData.drivePath || '';
+          }
+
+          if (sdCardModalActionTitle) sdCardModalActionTitle.textContent = 'Mulai Live Shutter & Monitor Foto?';
+          if (sdCardModalActionDesc) sdCardModalActionDesc.textContent = 'Foto yang masuk dari kamera akan disimpan ke folder di atas dan langsung masuk di antrean upload & monitor tanpa harus pilih folder manual.';
+          if (sdCardConfirmBtn) sdCardConfirmBtn.textContent = '📸 Konfirmasi & Mulai Live Shutter';
+
+          showToast(`📷 Kamera Terhubung: ${pendingDeviceName}`);
         }
+
+        const sdCardDetectModal = document.getElementById('sdCardDetectModal');
         if (sdCardDetectModal) {
           sdCardDetectModal.classList.remove('hidden');
         }
 
         const watchDirInput = document.getElementById('watchDir');
-        if (watchDirInput) {
+        if (watchDirInput && isSdCard) {
           watchDirInput.value = plugData.drivePath;
         }
 
         const watchDirDisplay = document.getElementById('watchDirDisplay');
-        if (watchDirDisplay) {
+        if (watchDirDisplay && isSdCard) {
           watchDirDisplay.textContent = plugData.drivePath;
         }
-
-        showToast(`💾 SD Card / Kamera Terdeteksi: ${plugData.cameraName}`);
       });
     }
   }
 }
 
 let pendingPlugDrivePath = null;
+let pendingDeviceType = 'sdcard';
+let pendingDeviceName = '';
 
 function setupSdCardDetectModal() {
   const sdCardDetectModal = document.getElementById('sdCardDetectModal');
-  const sdCardDetectPath = document.getElementById('sdCardDetectPath');
   const sdCardConfirmBtn = document.getElementById('sdCardConfirmBtn');
   const sdCardCancelBtn = document.getElementById('sdCardCancelBtn');
   const closeSdCardModalBtn = document.getElementById('closeSdCardModalBtn');
+  const cameraBrowseFolderBtn = document.getElementById('cameraBrowseFolderBtn');
+  const cameraIngestPathInput = document.getElementById('cameraIngestPathInput');
+
+  if (cameraBrowseFolderBtn) {
+    cameraBrowseFolderBtn.addEventListener('click', async () => {
+      if (window.electronAPI && window.electronAPI.selectDirectory) {
+        const chosen = await window.electronAPI.selectDirectory();
+        if (chosen) {
+          if (cameraIngestPathInput) cameraIngestPathInput.value = chosen;
+          pendingPlugDrivePath = chosen;
+        }
+      }
+    });
+  }
 
   if (closeSdCardModalBtn && sdCardDetectModal) {
     closeSdCardModalBtn.addEventListener('click', () => {
@@ -1617,30 +1699,58 @@ function setupSdCardDetectModal() {
   if (sdCardConfirmBtn && sdCardDetectModal) {
     sdCardConfirmBtn.addEventListener('click', async () => {
       sdCardDetectModal.classList.add('hidden');
-      if (pendingPlugDrivePath) {
-        // Save watchDir to input & store
-        const watchDirInput = document.getElementById('watchDir');
-        if (watchDirInput) watchDirInput.value = pendingPlugDrivePath;
-        
-        const watchDirDisplay = document.getElementById('watchDirDisplay');
-        if (watchDirDisplay) watchDirDisplay.textContent = pendingPlugDrivePath;
 
+      let targetFolder = pendingPlugDrivePath;
+      if (pendingDeviceType === 'camera' && cameraIngestPathInput && cameraIngestPathInput.value) {
+        targetFolder = cameraIngestPathInput.value;
+      }
+
+      if (targetFolder) {
+        const folderDisplayName = targetFolder.split(/[\\/]/).pop() || targetFolder;
+
+        // 1. Simpan watchDir ke input form settings
+        const watchDirInput = document.getElementById('watchDir');
+        if (watchDirInput) watchDirInput.value = targetFolder;
+        
+        // 2. Tampilkan target folder di Dashboard (Upload dan Monitor)
+        const watchFolderText = document.getElementById('watchFolderText');
+        if (watchFolderText) {
+          watchFolderText.textContent = `Target: ${folderDisplayName}`;
+          watchFolderText.title = targetFolder;
+        }
+
+        // 3. Simpan konfigurasi watchDir ke electron store
+        let currentSettings = {};
         try {
-          const currentSettings = await window.electronAPI.getSettings();
-          currentSettings.watchDir = pendingPlugDrivePath;
-          await window.electronAPI.saveSettings(currentSettings);
+          currentSettings = await window.electronAPI.getSettings() || {};
+          currentSettings.watchDir = targetFolder;
+          await window.electronAPI.saveSettings({ watchDir: targetFolder });
+          updateChecklists({ ...currentSettings, watchDir: targetFolder });
         } catch (e) {}
 
-        showToast(`⚡ Folder SD Card Ditambahkan: ${pendingPlugDrivePath}`);
+        // 4. TIDAK ADA OTOMATIS START WATCHER, KECUALI autoStartWatcher DIAKTIFKAN DI PENGATURAN!
+        if (currentSettings && currentSettings.autoStartWatcher) {
+          try {
+            const status = await window.electronAPI.getStatus();
+            if (status && !status.isWatching) {
+              await window.electronAPI.toggleWatcher(true);
+              await refreshEngineStatus();
+            }
+          } catch (eWatch) {}
+        } else {
+          // Status refresh agar tombol Start di dashboard siap ditekan manual oleh pengguna
+          await refreshEngineStatus();
+        }
 
-        // Start watcher if idle
-        try {
-          const status = await window.electronAPI.getStatus();
-          if (status && !status.isWatching) {
-            await window.electronAPI.toggleWatcher(true);
-            await refreshEngineStatus();
-          }
-        } catch (eWatch) {}
+        // 5. Otomatis masuk ke tab "Upload dan Monitor" tanpa harus pilih folder manual
+        switchTab('dashboard');
+
+        // 6. Tampilkan toast konfirmasi sukses dengan nama folder
+        if (pendingDeviceType === 'sdcard') {
+          showToast(`⚡ Folder SD Card Terpasang: "${folderDisplayName}" siap di antrian upload!`);
+        } else {
+          showToast(`📸 Folder Kamera Terpasang: "${folderDisplayName}" siap menerima foto!`);
+        }
       }
     });
   }
@@ -1660,19 +1770,62 @@ function updateLiveShutterUI(status) {
 
   const { cable, wifi, stats } = status;
 
-  // Cable Status
+  // 1. Camera Direct Connection Status (Live Shutter)
+  const cameraStatusBox = document.getElementById('cameraStatusBox');
+  const cameraStatusText = document.getElementById('cameraStatusText');
+  const cameraStatusBadge = document.getElementById('cameraStatusBadge');
+
+  if (cameraStatusBox && cameraStatusText) {
+    if (cable && cable.cameraDetails) {
+      cameraStatusBox.className = 'device-status-row connected camera';
+      cameraStatusText.textContent = `${cable.cameraDetails.name} (Siap Live Shutter)`;
+      if (cameraStatusBadge) {
+        cameraStatusBadge.className = 'device-status-badge connected camera';
+        cameraStatusBadge.textContent = 'TERHUBUNG';
+      }
+    } else {
+      cameraStatusBox.className = 'device-status-row offline';
+      cameraStatusText.textContent = 'Menunggu kamera dicolok via kabel...';
+      if (cameraStatusBadge) {
+        cameraStatusBadge.className = 'device-status-badge offline';
+        cameraStatusBadge.textContent = 'TIDAK TERHUBUNG';
+      }
+    }
+  }
+
+  // 2. SD Card Connection Status (Card Reader)
+  const sdcardStatusBox = document.getElementById('sdcardStatusBox');
+  const sdcardStatusText = document.getElementById('sdcardStatusText');
+  const sdcardStatusBadge = document.getElementById('sdcardStatusBadge');
+
+  if (sdcardStatusBox && sdcardStatusText) {
+    if (cable && cable.sdCardDetails) {
+      sdcardStatusBox.className = 'device-status-row connected sdcard';
+      sdcardStatusText.textContent = `Drive ${cable.sdCardDetails.driveLetter}:\\ (${cable.sdCardDetails.folderName || 'DCIM'})`;
+      if (sdcardStatusBadge) {
+        sdcardStatusBadge.className = 'device-status-badge connected sdcard';
+        sdcardStatusBadge.textContent = 'TERDETEKSI';
+      }
+    } else {
+      sdcardStatusBox.className = 'device-status-row offline';
+      sdcardStatusText.textContent = 'Tidak ada kartu memori terdeteksi';
+      if (sdcardStatusBadge) {
+        sdcardStatusBadge.className = 'device-status-badge offline';
+        sdcardStatusBadge.textContent = 'TIDAK TERDETEKSI';
+      }
+    }
+  }
+
+  // Legacy Cable Status Box fallback
   const cableStatusBox = document.getElementById('cableStatusBox');
   const cableStatusText = document.getElementById('cableStatusText');
   if (cableStatusBox && cableStatusText) {
     if (cable && cable.connectedCamera) {
       cableStatusBox.className = 'status-box connected';
       cableStatusText.textContent = `🔌 ${cable.connectedCamera}`;
-    } else if (cable && cable.enabled) {
-      cableStatusBox.className = 'status-box offline';
-      cableStatusText.textContent = 'Menunggu Kabel Kamera Dicolok (Mass Storage / MTP)...';
     } else {
       cableStatusBox.className = 'status-box offline';
-      cableStatusText.textContent = 'Pemantauan Kabel Non-Aktif';
+      cableStatusText.textContent = 'Menunggu Kamera / SD Card...';
     }
   }
 
@@ -1685,13 +1838,13 @@ function updateLiveShutterUI(status) {
   if (wifiStatusBox && wifiStatusText) {
     if (wifi && wifi.running) {
       wifiStatusBox.className = 'status-box connected';
-      wifiStatusText.textContent = `📡 Server WiFi Ingest Aktif (Port ${wifi.port})`;
-      if (wifiIpDisplay) wifiIpDisplay.textContent = `http://${wifi.ip}:${wifi.port}`;
+      wifiStatusText.textContent = `📡 Server FTP Kamera Aktif (Port ${wifi.port})`;
+      if (wifiIpDisplay) wifiIpDisplay.textContent = `ftp://${wifi.ip}:${wifi.port}`;
       if (wifiToggle) wifiToggle.checked = true;
     } else {
       wifiStatusBox.className = 'status-box offline';
       wifiStatusText.textContent = 'Server WiFi Dihentikan';
-      if (wifiIpDisplay) wifiIpDisplay.textContent = `http://${wifi?.ip || '127.0.0.1'}:${wifi?.port || 2121}`;
+      if (wifiIpDisplay) wifiIpDisplay.textContent = `ftp://${wifi?.ip || '127.0.0.1'}:${wifi?.port || 2121}`;
       if (wifiToggle) wifiToggle.checked = false;
     }
   }

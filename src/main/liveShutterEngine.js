@@ -2,7 +2,14 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const http = require('http');
-const { execFile } = require('child_process');
+const { execFile, spawn } = require('child_process');
+
+let FtpSrv = null;
+try {
+  FtpSrv = require('ftp-srv');
+} catch (e) {
+  console.warn('ftp-srv module not loaded:', e.message);
+}
 
 class LiveShutterEngine {
   constructor(app, store, uploaderEngine, sendToRenderer) {
@@ -16,7 +23,11 @@ class LiveShutterEngine {
       enabled: true,
       autoDetectDCIM: true,
       connectedCamera: null,
+      cameraDetails: null,   // { name, model, path, type: 'camera' }
+      connectedSdCard: null, // e.g. "SD Card (E:)"
+      sdCardDetails: null,   // { name, driveLetter, path, folderName, type: 'sdcard' }
       detectedDrive: null,
+      activeDeviceType: null, // 'camera' or 'sdcard' or null
       lastScanTime: null
     };
 
@@ -34,15 +45,64 @@ class LiveShutterEngine {
       lastShotSource: null
     };
 
-    this.wifiServer = null;
+    this.wifiServer = null;             // Real FtpSrv instance for cameras
+    this.httpCompanionServer = null;    // Companion HTTP Web Portal
+    this.macBridgeProcess = null;       // Swift ImageCaptureCore child process on macOS
     this.cableInterval = null;
+    this.isCheckingDrives = false;
+
+    // Camera Ingest Sync Cache (persists known filenames so switching folders will never re-copy old camera photos)
+    this.syncedFilesPath = path.join(this.app.getPath('userData'), 'synced_camera_files.txt');
+    this.syncedCameraFiles = new Set();
 
     this.init();
   }
 
   init() {
-    this.log('INFO', '📸 Initializing Live Shutter Connect Engine (Cable USB & WiFi Ingest)...');
+    this.log('INFO', '📸 Initializing Live Shutter Connect Engine (Cable USB & WiFi FTP Ingest)...');
+    this.initSyncedFiles();
     this.startCableDriveMonitoring();
+    if (process.platform === 'darwin') {
+      const defaultIngestDir = this.store.get('watchDir') || path.join(this.app.getPath('userData'), 'camera_ingest');
+      this.startMacCameraBridge(defaultIngestDir);
+    }
+  }
+
+  initSyncedFiles() {
+    try {
+      if (fs.existsSync(this.syncedFilesPath)) {
+        const lines = fs.readFileSync(this.syncedFilesPath, 'utf8').split('\n');
+        for (const l of lines) {
+          const trimmed = l.trim();
+          if (trimmed) this.syncedCameraFiles.add(trimmed);
+        }
+      } else {
+        // Pre-populate with existing files in current watchDir and upload history so old photos are not re-ingested
+        const watchDir = this.store.get('watchDir');
+        if (watchDir && fs.existsSync(watchDir)) {
+          const entries = fs.readdirSync(watchDir);
+          for (const f of entries) {
+            if (/\.(jpg|jpeg|png|arw|cr2|cr3|nef|raf|dng)$/i.test(f)) {
+              this.syncedCameraFiles.add(f);
+            }
+          }
+        }
+
+        if (this.uploaderEngine && this.uploaderEngine.uploadedRegistry) {
+          for (const filePath of this.uploaderEngine.uploadedRegistry) {
+            this.syncedCameraFiles.add(path.basename(filePath));
+          }
+        }
+
+        if (this.syncedCameraFiles.size > 0) {
+          fs.writeFileSync(this.syncedFilesPath, Array.from(this.syncedCameraFiles).join('\n') + '\n', 'utf8');
+        } else {
+          fs.writeFileSync(this.syncedFilesPath, '', 'utf8');
+        }
+      }
+    } catch (e) {
+      console.warn('Could not initialize synced files cache:', e.message);
+    }
   }
 
   log(type, message, details = null) {
@@ -106,7 +166,13 @@ class LiveShutterEngine {
         return resolve({ success: false });
       }
 
-      const args = ['-ExecutionPolicy', 'Bypass', '-File', scriptPath, '-Action', 'sync', '-TargetDir', targetDir];
+      const args = [
+        '-ExecutionPolicy', 'Bypass',
+        '-File', scriptPath,
+        '-Action', 'sync',
+        '-TargetDir', targetDir,
+        '-KnownFilesPath', this.syncedFilesPath
+      ];
       execFile('powershell.exe', args, { windowsHide: true, timeout: 15000 }, (err, stdout) => {
         if (err || !stdout) return resolve({ success: false });
         try {
@@ -120,11 +186,42 @@ class LiveShutterEngine {
   }
 
   async checkConnectedDrives() {
-    try {
-      let detectedDrive = null;
-      let cameraName = null;
+    if (this.isCheckingDrives) return;
+    this.isCheckingDrives = true;
 
-      // 1. Check Mass Storage Drive Letters (e.g. D:\DCIM, E:\DCIM, etc.)
+    try {
+      let detectedCamera = null; // { name, model, path, type: 'camera' }
+      let detectedSdCard = null; // { name, driveLetter, path, folderName, type: 'sdcard' }
+
+      // 1. CHECK DIRECT CAMERA (Windows MTP / WPD or macOS ImageCapture)
+      if (process.platform === 'win32') {
+        const defaultIngestDir = this.store.get('watchDir') || path.join(this.app.getPath('userData'), 'camera_ingest');
+        if (!fs.existsSync(defaultIngestDir)) {
+          fs.mkdirSync(defaultIngestDir, { recursive: true });
+        }
+
+        const mtpRes = await this.checkMtpCamera(defaultIngestDir);
+        if (mtpRes && mtpRes.found) {
+          detectedCamera = {
+            name: mtpRes.cameraName,
+            model: mtpRes.cameraName,
+            path: defaultIngestDir,
+            type: 'camera'
+          };
+
+          if (mtpRes.copiedCount > 0) {
+            this.log('SUCCESS', `⚡ LIVE SHUTTER KAMERA! ${mtpRes.copiedCount} foto baru ditarik dari ${mtpRes.cameraName}.`);
+            if (Array.isArray(mtpRes.copiedFiles) && mtpRes.copiedFiles.length > 0) {
+              for (const filename of mtpRes.copiedFiles) {
+                const fullPath = path.join(defaultIngestDir, filename);
+                this.onLiveShutterReceived(fullPath, 'Kabel USB Direct (Live Shutter)', mtpRes.cameraName);
+              }
+            }
+          }
+        }
+      }
+
+      // 2. CHECK SD CARD / CARD READER (Removable Drive Letters with DCIM folder)
       if (process.platform === 'win32') {
         const driveLetters = ['D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'];
         for (const letter of driveLetters) {
@@ -133,32 +230,31 @@ class LiveShutterEngine {
           
           if (fs.existsSync(dcimPath)) {
             let subfolder = null;
-            let brandTag = 'Kamera Digital';
+            let folderName = 'DCIM';
             try {
               const subItems = fs.readdirSync(dcimPath);
               for (const item of subItems) {
                 const fullSub = path.join(dcimPath, item);
                 if (fs.statSync(fullSub).isDirectory() && !item.startsWith('.')) {
                   subfolder = fullSub;
-                  if (item.includes('CANON') || item.includes('EOS')) brandTag = 'Canon EOS Camera';
-                  else if (item.includes('MSDCF') || item.includes('SONY')) brandTag = 'Sony Alpha Camera';
-                  else if (item.includes('NIKON') || item.includes('NCD')) brandTag = 'Nikon Z Studio Camera';
-                  else if (item.includes('FUJI')) brandTag = 'Fujifilm X-Series Camera';
-                  else if (item.includes('GOPRO')) brandTag = 'GoPro Camera';
-                  else if (item.includes('PANA')) brandTag = 'Lumix Camera';
-                  else brandTag = `Kamera Folder (${item})`;
+                  folderName = item;
                   break;
                 }
               }
             } catch (e) {}
 
-            detectedDrive = subfolder || dcimPath;
-            cameraName = `${brandTag} (${letter}:\\DCIM)`;
+            detectedSdCard = {
+              name: `SD Card (${letter}:)`,
+              driveLetter: letter,
+              path: subfolder || dcimPath,
+              folderName: folderName,
+              type: 'sdcard'
+            };
             break;
           }
         }
       } else {
-        // macOS / Linux volume mounts & USB Camera detection
+        // macOS / Linux volume mounts
         const volumesPath = '/Volumes';
         if (fs.existsSync(volumesPath)) {
           try {
@@ -167,7 +263,6 @@ class LiveShutterEngine {
               if (vol === 'Macintosh HD' || vol === 'Macintosh HD - Data' || vol.startsWith('.')) continue;
               const fullVolPath = path.join(volumesPath, vol);
               
-              // Case-insensitive DCIM search & subfolder inspection
               let dcimFoundPath = null;
               try {
                 const volItems = fs.readdirSync(fullVolPath);
@@ -179,51 +274,49 @@ class LiveShutterEngine {
 
               if (dcimFoundPath && fs.existsSync(dcimFoundPath)) {
                 let subfolder = null;
-                let brandTag = `Kamera (${vol})`;
+                let folderName = vol;
                 try {
                   const subItems = fs.readdirSync(dcimFoundPath);
                   for (const item of subItems) {
                     const fullSub = path.join(dcimFoundPath, item);
                     if (fs.statSync(fullSub).isDirectory() && !item.startsWith('.')) {
                       subfolder = fullSub;
-                      if (item.includes('NIKON') || item.includes('NCD')) brandTag = `Nikon Camera (${vol})`;
-                      else if (item.includes('CANON') || item.includes('EOS')) brandTag = `Canon Camera (${vol})`;
-                      else if (item.includes('MSDCF') || item.includes('SONY')) brandTag = `Sony Camera (${vol})`;
-                      else if (item.includes('FUJI')) brandTag = `Fujifilm Camera (${vol})`;
-                      else brandTag = `Kamera ${item} (${vol})`;
+                      folderName = item;
                       break;
                     }
                   }
                 } catch (e) {}
 
-                detectedDrive = subfolder || dcimFoundPath;
-                cameraName = `${brandTag}/DCIM`;
+                detectedSdCard = {
+                  name: `SD Card (${vol})`,
+                  driveLetter: vol,
+                  path: subfolder || dcimFoundPath,
+                  folderName: folderName,
+                  type: 'sdcard'
+                };
 
-                // Auto Sync New Photos on macOS (Same auto-ingest behavior as Windows MTP)
+                // Auto sync if macOS
                 const targetIngestDir = this.store.get('watchDir') || path.join(this.app.getPath('userData'), 'camera_ingest');
                 if (!fs.existsSync(targetIngestDir)) {
                   fs.mkdirSync(targetIngestDir, { recursive: true });
                 }
-
                 try {
                   const targetFolderToScan = subfolder || dcimFoundPath;
                   const photoFiles = fs.readdirSync(targetFolderToScan);
                   let macCopiedCount = 0;
-
                   for (const f of photoFiles) {
                     if (!/\.(jpg|jpeg|png)$/i.test(f) || f.startsWith('.')) continue;
+                    if (this.syncedCameraFiles.has(f)) continue;
                     const srcPhotoPath = path.join(targetFolderToScan, f);
                     const destPhotoPath = path.join(targetIngestDir, f);
-
                     if (!fs.existsSync(destPhotoPath)) {
                       fs.copyFileSync(srcPhotoPath, destPhotoPath);
                       macCopiedCount++;
-                      this.onLiveShutterReceived(destPhotoPath, 'Kabel USB Direct (macOS)', brandTag);
+                      this.onLiveShutterReceived(destPhotoPath, 'SD Card Reader (macOS)', vol);
                     }
                   }
-
                   if (macCopiedCount > 0) {
-                    this.log('SUCCESS', `📸 macOS Cable Ingest: Sync ${macCopiedCount} foto baru dari ${brandTag}!`);
+                    this.log('SUCCESS', `💾 SD Card Ingest: Sync ${macCopiedCount} foto baru dari ${vol}!`);
                   }
                 } catch (eMacCopy) {}
 
@@ -233,92 +326,118 @@ class LiveShutterEngine {
           } catch (errVol) {}
         }
 
-        // Fallback: Check connected USB Cameras via system_profiler on macOS
-        if (!detectedDrive && process.platform === 'darwin') {
-          try {
-            const { execSync } = require('child_process');
-            const usbInfo = execSync('system_profiler SPUSBDataType 2>/dev/null', { timeout: 3000 }).toString();
-            const cameraMatch = usbInfo.match(/(Nikon|Canon|Sony|Fujifilm|GoPro|Olympus|Panasonic|Lumix|Leica)[^\n]*/i);
-            if (cameraMatch) {
-              const detectedCamModel = cameraMatch[0].trim();
-              this.log('SUCCESS', `🔌 KAMERA TERHUBUNG VIA USB (macOS PTP): "${detectedCamModel}"`);
-            }
-          } catch (eUsb) {}
-        }
-      }
-
-      // 2. Check Windows MTP / WPD Cameras (e.g. Nikon Z 6 II, Sony ILCE, Canon EOS in MTP mode)
-      if (!detectedDrive && process.platform === 'win32') {
-        const defaultIngestDir = this.store.get('watchDir') || path.join(this.app.getPath('userData'), 'camera_ingest');
-        if (!fs.existsSync(defaultIngestDir)) {
-          fs.mkdirSync(defaultIngestDir, { recursive: true });
-        }
-
-        const mtpRes = await this.checkMtpCamera(defaultIngestDir);
-        if (mtpRes && mtpRes.found) {
-          detectedDrive = defaultIngestDir;
-          cameraName = `Kamera MTP: ${mtpRes.cameraName}`;
-
-          if (mtpRes.copiedCount > 0) {
-            this.log('SUCCESS', `📸 MTP Camera Ingest: Sync ${mtpRes.copiedCount} foto baru dari ${mtpRes.cameraName}!`);
-            if (Array.isArray(mtpRes.copiedFiles) && mtpRes.copiedFiles.length > 0) {
-              for (const filename of mtpRes.copiedFiles) {
-                const fullPath = path.join(defaultIngestDir, filename);
-                this.onLiveShutterReceived(fullPath, 'Kabel USB Direct (MTP)', mtpRes.cameraName);
-              }
-            }
+        if (process.platform === 'darwin') {
+          const defaultIngestDir = this.store.get('watchDir') || path.join(this.app.getPath('userData'), 'camera_ingest');
+          if (!this.macBridgeProcess && this.cableConfig.enabled) {
+            this.startMacCameraBridge(defaultIngestDir);
           }
         }
       }
 
       this.cableConfig.lastScanTime = new Date().toISOString();
 
-      const isNewConnection = (detectedDrive && (this.cableConfig.detectedDrive !== detectedDrive || !this.cableConfig.connectedCamera));
+      // Check for CAMERA connection changes
+      const wasCameraConnected = !!this.cableConfig.cameraDetails;
+      const isCameraNowConnected = !!detectedCamera;
 
-      if (isNewConnection) {
-        this.cableConfig.detectedDrive = detectedDrive;
-        this.cableConfig.connectedCamera = cameraName;
-        this.log('SUCCESS', `🔌 KAMERA TERHUBUNG! Auto-deteksi: "${cameraName}" -> "${detectedDrive}"`);
-        
-        // Auto assign watchDir
-        if (this.cableConfig.autoDetectDCIM) {
-          this.store.set('watchDir', detectedDrive);
-          this.log('INFO', `Auto-assign Watch Directory ke folder kamera: "${detectedDrive}" (Menunggu Tombol Start manual)`);
-        }
+      if (!wasCameraConnected && isCameraNowConnected) {
+        this.cableConfig.cameraDetails = detectedCamera;
+        this.cableConfig.connectedCamera = detectedCamera.name;
+        this.log('SUCCESS', `📸 KAMERA TERHUBUNG (Live Shutter)! ${detectedCamera.name} via USB Direct.`);
 
-        // Notify renderer with plug-in alert banner
-        this.sendToRenderer('live-shutter:cameraPluggedIn', {
-          cameraName,
-          drivePath: detectedDrive,
+        const payload = {
+          deviceType: 'camera',
+          deviceName: detectedCamera.name,
+          deviceIcon: '📷',
+          cameraName: detectedCamera.name,
+          drivePath: detectedCamera.path,
+          description: `Kamera ${detectedCamera.name} terhubung via kabel USB Direct. Siap menerima jepretan live shutter!`,
           timestamp: Date.now()
-        });
-
-        this.updateUI();
-      } else if (detectedDrive && cameraName && cameraName.startsWith('Kamera MTP:')) {
-        // Periodic background sync for MTP camera
-        this.cableConfig.connectedCamera = cameraName;
-        const defaultIngestDir = detectedDrive;
-        const mtpRes = await this.checkMtpCamera(defaultIngestDir);
-        
-        if (mtpRes && mtpRes.copiedCount > 0) {
-          this.log('SUCCESS', `⚡ MTP LIVE SHOT! ${mtpRes.copiedCount} foto baru ditarik dari ${mtpRes.cameraName}.`);
-          
-          if (Array.isArray(mtpRes.copiedFiles) && mtpRes.copiedFiles.length > 0) {
-            for (const filename of mtpRes.copiedFiles) {
-              const fullPath = path.join(defaultIngestDir, filename);
-              this.onLiveShutterReceived(fullPath, 'Kabel USB Direct (MTP)', mtpRes.cameraName);
-            }
-          }
-        }
-        this.updateUI();
-      } else if (!detectedDrive && this.cableConfig.detectedDrive) {
-        this.cableConfig.detectedDrive = null;
+        };
+        this.sendToRenderer('live-shutter:devicePluggedIn', payload);
+        this.sendToRenderer('live-shutter:cameraPluggedIn', payload);
+      } else if (wasCameraConnected && !isCameraNowConnected) {
+        this.log('WARN', `🔌 Kamera ${this.cableConfig.connectedCamera || ''} Terputus / Dilepas.`);
+        this.cableConfig.cameraDetails = null;
         this.cableConfig.connectedCamera = null;
-        this.log('WARN', '🔌 Kabel Kamera Terputus/Dilepas.');
-        this.updateUI();
+
+        // If camera disconnected and SD card is present, switch notification to SD card
+        if (isSdCardNowConnected) {
+          this.log('INFO', `[LIVE SHUTTER] Berpindah ke SD Card: ${detectedSdCard.name}`);
+          const payload = {
+            deviceType: 'sdcard',
+            deviceName: detectedSdCard.name,
+            deviceIcon: '💾',
+            cameraName: detectedSdCard.name,
+            driveLetter: detectedSdCard.driveLetter,
+            folderName: detectedSdCard.folderName,
+            drivePath: detectedSdCard.path,
+            description: `SD Card di Drive ${detectedSdCard.driveLetter}:\\ siap digunakan.`,
+            timestamp: Date.now()
+          };
+          this.sendToRenderer('live-shutter:devicePluggedIn', payload);
+          this.sendToRenderer('live-shutter:cameraPluggedIn', payload);
+        }
       }
+
+      // Check for SD CARD connection changes
+      const wasSdCardConnected = !!this.cableConfig.sdCardDetails;
+      const isSdCardNowConnected = !!detectedSdCard;
+
+      if (!wasSdCardConnected && isSdCardNowConnected) {
+        this.cableConfig.sdCardDetails = detectedSdCard;
+        this.cableConfig.connectedSdCard = detectedSdCard.name;
+        this.log('SUCCESS', `💾 SD CARD TERDETEKSI! Kartu memori terpasang di Drive ${detectedSdCard.driveLetter}:\\ (${detectedSdCard.path})`);
+
+        if (this.cableConfig.autoDetectDCIM) {
+          this.store.set('watchDir', detectedSdCard.path);
+          this.log('INFO', `[SD CARD] Auto-assign Watch Directory ke folder SD Card: "${detectedSdCard.path}"`);
+        }
+
+        const payload = {
+          deviceType: 'sdcard',
+          deviceName: detectedSdCard.name,
+          deviceIcon: '💾',
+          cameraName: detectedSdCard.name,
+          driveLetter: detectedSdCard.driveLetter,
+          folderName: detectedSdCard.folderName,
+          drivePath: detectedSdCard.path,
+          description: `Kartu SD Card terdeteksi di Drive ${detectedSdCard.driveLetter}:\\. Siap mengimpor batch foto!`,
+          timestamp: Date.now()
+        };
+        this.sendToRenderer('live-shutter:devicePluggedIn', payload);
+        this.sendToRenderer('live-shutter:cameraPluggedIn', payload);
+      } else if (wasSdCardConnected && !isSdCardNowConnected) {
+        this.log('WARN', `💾 SD Card di Drive ${this.cableConfig.sdCardDetails?.driveLetter || ''}:\\ Dicabut / Dilepas.`);
+        this.cableConfig.sdCardDetails = null;
+        this.cableConfig.connectedSdCard = null;
+
+        // If SD card removed and camera is connected, switch notification to camera
+        if (isCameraNowConnected) {
+          this.log('INFO', `[LIVE SHUTTER] Berpindah ke Kamera: ${detectedCamera.name}`);
+          const payload = {
+            deviceType: 'camera',
+            deviceName: detectedCamera.name,
+            deviceIcon: '📷',
+            cameraName: detectedCamera.name,
+            drivePath: detectedCamera.path,
+            description: `Kamera ${detectedCamera.name} terhubung via USB Direct.`,
+            timestamp: Date.now()
+          };
+          this.sendToRenderer('live-shutter:devicePluggedIn', payload);
+          this.sendToRenderer('live-shutter:cameraPluggedIn', payload);
+        }
+      }
+
+      // Single properties for backward compatibility
+      this.cableConfig.detectedDrive = detectedCamera ? detectedCamera.path : (detectedSdCard ? detectedSdCard.path : null);
+      this.cableConfig.activeDeviceType = detectedCamera ? 'camera' : (detectedSdCard ? 'sdcard' : null);
+
+      this.updateUI();
     } catch (err) {
       // ignore stat errors on drive scan
+    } finally {
+      this.isCheckingDrives = false;
     }
   }
 
@@ -328,6 +447,14 @@ class LiveShutterEngine {
     this.log('INFO', `USB Cable Mode: ${enabled ? 'AKTIF' : 'NON-AKTIF'}`);
     if (enabled) {
       this.checkConnectedDrives();
+      if (process.platform === 'darwin') {
+        const defaultIngestDir = this.store.get('watchDir') || path.join(this.app.getPath('userData'), 'camera_ingest');
+        this.startMacCameraBridge(defaultIngestDir);
+      }
+    } else {
+      if (process.platform === 'darwin') {
+        this.stopMacCameraBridge();
+      }
     }
     this.updateUI();
     return this.cableConfig;
@@ -342,87 +469,142 @@ class LiveShutterEngine {
     return this.cableConfig;
   }
 
-  // --- 2. PERFECTED WIFI WIRELESS CAMERA INGEST SERVER ---
-  toggleWifiServer(enabled, port = 2121) {
+  // --- 2. PERFECTED WIFI WIRELESS CAMERA INGEST SERVER (REAL FTP + WEB COMPANION) ---
+  async toggleWifiServer(enabled, port = 2121) {
     this.wifiConfig.port = port;
 
     if (enabled) {
       if (this.wifiConfig.running) {
         this.stopWifiServer();
       }
-      return this.startWifiServer();
+      return await this.startWifiServer();
     } else {
       this.stopWifiServer();
       return { success: true, running: false };
     }
   }
 
-  startWifiServer() {
+  async startWifiServer() {
     try {
       const targetDir = this.store.get('watchDir') || path.join(this.app.getPath('userData'), 'wifi_ingest');
       if (!fs.existsSync(targetDir)) {
         fs.mkdirSync(targetDir, { recursive: true });
       }
 
-      // HTTP & Raw Photo Ingest Endpoint for Wireless Cameras (Canon WFT, Nikon WT, Sony FTP Over HTTP)
-      this.wifiServer = http.createServer((req, res) => {
-        if (req.method === 'POST' || req.method === 'PUT') {
-          const filename = `WIFI_SHOT_${Date.now()}_${Math.floor(Math.random() * 1000)}.jpg`;
-          const savePath = path.join(targetDir, filename);
-          const writeStream = fs.createWriteStream(savePath);
+      const ip = this.getLocalIPAddress();
+      const ftpPort = this.wifiConfig.port || 2121;
+      const httpPort = ftpPort + 1; // e.g. 2122 for companion web portal
 
-          req.pipe(writeStream);
+      // 1. START REAL FTP / FTPS SERVER FOR PROFESSIONAL CAMERAS (Sony, Nikon, Canon, Fuji)
+      if (FtpSrv) {
+        this.ftpServer = new FtpSrv({
+          url: `ftp://0.0.0.0:${ftpPort}`,
+          pasv_url: ip,
+          anonymous: true,
+          greeting: ['FotoSync PRO Camera Ingest Server Ready']
+        });
 
-          req.on('end', () => {
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ status: 'ok', filename }));
+        this.ftpServer.on('login', ({ connection, username, password }, resolve, reject) => {
+          this.wifiConfig.connectedClients++;
+          const clientIp = connection.ip || 'Kamera';
+          this.log('SUCCESS', `📡 Kamera Terhubung via WiFi FTP! [${clientIp}] User: ${username || 'anonymous'}`);
+          this.updateUI();
 
-            this.onLiveShutterReceived(savePath, 'WiFi Wireless Ingest', 'Kamera Wireless WiFi');
+          connection.on('STOR', (err, serverPath) => {
+            if (!err && serverPath) {
+              const filename = path.basename(serverPath);
+              this.log('SUCCESS', `📸 LIVE SHOT WIRELESS! Foto diterima dari kamera via FTP: ${filename}`);
+              this.onLiveShutterReceived(serverPath, 'WiFi Wireless (FTP)', 'Kamera Wireless (FTP)');
+            }
           });
 
-          req.on('error', (err) => {
-            res.writeHead(500, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: err.message }));
+          connection.on('close', () => {
+            this.wifiConfig.connectedClients = Math.max(0, this.wifiConfig.connectedClients - 1);
+            this.log('INFO', `🔌 Sesi FTP Kamera terputus/selesai dari ${clientIp}`);
+            this.updateUI();
           });
-        } else {
-          const ip = this.getLocalIPAddress();
-          const html = this.getWifiPortalHTML(ip, this.wifiConfig.port);
-          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-          res.end(html);
-        }
-      });
 
-      this.wifiServer.listen(this.wifiConfig.port, () => {
+          resolve({ root: targetDir });
+        });
+
+        this.ftpServer.on('client-error', ({ connection, context, error }) => {
+          console.warn(`[FTP Error ${context}]:`, error?.message);
+        });
+
+        await this.ftpServer.listen();
         this.wifiConfig.running = true;
-        const ip = this.getLocalIPAddress();
-        this.log('SUCCESS', `📡 Server Ingest WiFi Kamera Aktif pada http://${ip}:${this.wifiConfig.port}`);
-        this.updateUI();
-      });
+        this.log('SUCCESS', `📡 Server FTP Kamera Aktif pada ftp://${ip}:${ftpPort}`);
+      }
 
-      this.wifiServer.on('error', (err) => {
-        this.wifiConfig.running = false;
-        this.log('ERROR', `Gagal membuka Server WiFi (Port ${this.wifiConfig.port}): ${err.message}`);
-        this.updateUI();
-      });
+      // 2. START COMPANION HTTP WEB PORTAL (For Mobile/Browser Uploads on port + 1)
+      try {
+        this.httpCompanionServer = http.createServer((req, res) => {
+          if (req.method === 'POST' || req.method === 'PUT') {
+            const filename = `MOBILE_SHOT_${Date.now()}_${Math.floor(Math.random() * 1000)}.jpg`;
+            const savePath = path.join(targetDir, filename);
+            const writeStream = fs.createWriteStream(savePath);
 
-      return { success: true, running: true, ip: this.getLocalIPAddress(), port: this.wifiConfig.port };
+            req.pipe(writeStream);
+
+            req.on('end', () => {
+              res.writeHead(200, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ status: 'ok', filename }));
+
+              this.onLiveShutterReceived(savePath, 'Mobile Web Ingest', 'Smartphone Browser');
+            });
+
+            req.on('error', (err) => {
+              res.writeHead(500, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: err.message }));
+            });
+          } else {
+            const html = this.getWifiPortalHTML(ip, ftpPort, httpPort);
+            res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+            res.end(html);
+          }
+        });
+
+        this.httpCompanionServer.listen(httpPort, () => {
+          this.log('INFO', `📱 Web Ingest Portal untuk HP/Browser Aktif pada http://${ip}:${httpPort}`);
+        });
+
+        this.httpCompanionServer.on('error', (err) => {
+          console.warn('[HTTP Companion Server Warning]:', err.message);
+        });
+      } catch (eHttp) {
+        console.warn('Could not start HTTP companion server:', eHttp.message);
+      }
+
+      this.updateUI();
+      return { success: true, running: true, ip, port: ftpPort, httpPort };
     } catch (err) {
-      this.log('ERROR', `Gagal memulai WiFi Server: ${err.message}`);
+      this.wifiConfig.running = false;
+      this.log('ERROR', `Gagal memulai Server WiFi FTP: ${err.message}`);
+      this.updateUI();
       return { success: false, error: err.message };
     }
   }
 
   stopWifiServer() {
-    if (this.wifiServer) {
-      this.wifiServer.close();
-      this.wifiServer = null;
+    if (this.ftpServer) {
+      try {
+        this.ftpServer.close();
+      } catch (e) {}
+      this.ftpServer = null;
+    }
+    if (this.httpCompanionServer) {
+      try {
+        this.httpCompanionServer.close();
+      } catch (e) {}
+      this.httpCompanionServer = null;
     }
     this.wifiConfig.running = false;
+    this.wifiConfig.connectedClients = 0;
     this.log('WARN', '📡 Server Ingest WiFi Kamera Dihentikan.');
     this.updateUI();
   }
 
-  getWifiPortalHTML(ip, port) {
+  getWifiPortalHTML(ip, ftpPort, httpPort) {
     return `<!DOCTYPE html>
 <html lang="id">
 <head>
@@ -483,60 +665,64 @@ class LiveShutterEngine {
       <p class="sub">Server Receiver Nirkabel Kamera (Canon, Nikon, Sony, Fujifilm & Mobile Upload)</p>
       <div class="status-badge">
         <span class="pulse"></span>
-        <span>SERVER LIVE & READY</span>
+        <span>SERVER FTP LIVE & READY</span>
       </div>
     </div>
 
     <div class="grid">
       <div class="card">
-        <div class="card-title">⚙️ Informasi Server Ingest</div>
+        <div class="card-title">⚙️ Parameter FTP Server Kamera</div>
         <div class="info-row">
-          <span class="info-label">Alamat IP Server:</span>
-          <span class="info-val">http://${ip}</span>
+          <span class="info-label">Alamat Host / IP:</span>
+          <span class="info-val">${ip}</span>
         </div>
         <div class="info-row">
-          <span class="info-label">Port HTTP / FTP Ingest:</span>
-          <span class="info-val">${port}</span>
+          <span class="info-label">Port FTP Kamera:</span>
+          <span class="info-val">${ftpPort}</span>
         </div>
         <div class="info-row">
-          <span class="info-label">URL Endpoint Lengkap:</span>
-          <span class="info-val">http://${ip}:${port}</span>
+          <span class="info-label">Username / Login:</span>
+          <span class="info-val">anonymous</span>
         </div>
         <div class="info-row">
-          <span class="info-label">Metode Transmisi:</span>
-          <span class="info-val">HTTP POST / Raw Binary</span>
+          <span class="info-label">Password:</span>
+          <span class="info-val">(kosongkan)</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Mode Transfer:</span>
+          <span class="info-val">Passive (PASV)</span>
         </div>
 
         <div style="margin-top: 20px;">
-          <div class="card-title">📱 Tes Upload Foto dari HP / Laptop Browser</div>
+          <div class="card-title">📱 Upload Foto dari Browser HP / Laptop</div>
           <div class="dropzone" onclick="document.getElementById('fileInput').click()">
             <div class="dz-icon">📤</div>
             <div class="dz-text">Pilih Foto atau Seret ke Sini</div>
-            <div class="dz-sub">Foto akan langsung terkirim ke Desktop Uploader & Masuk Antrean</div>
+            <div class="dz-sub">Foto otomatis diteruskan ke Desktop Uploader & Masuk Antrean</div>
             <input type="file" id="fileInput" accept="image/*" multiple onchange="uploadFiles(this.files)" />
           </div>
         </div>
       </div>
 
       <div class="card">
-        <div class="card-title">📖 Panduan Koneksi Kamera Wireless (FTP / Push)</div>
+        <div class="card-title">📖 Panduan Koneksi Kamera Wireless (FTP Push)</div>
 
         <div class="brand-section">
           <div class="brand-header">🟡 Nikon (Z9 / Z8 / Z6 II / WT-7)</div>
           <ol class="brand-steps">
             <li>Buka Menu 🌐 <strong>Network Settings</strong> ➔ <strong>Connect to FTP Server</strong>.</li>
             <li>Pilih <strong>Add Network Profile</strong> ➔ Hubungkan ke WiFi yang sama dengan laptop.</li>
-            <li>Masukkan Server Address: <span class="highlight">http://${ip}:${port}</span></li>
-            <li>Aktifkan <strong>Auto Send on Shoot</strong>. Setiap foto jepretan otomatis terkirim.</li>
+            <li>Server Type: <strong>FTP</strong>, Host: <span class="highlight">${ip}</span>, Port: <span class="highlight">${ftpPort}</span>.</li>
+            <li>Aktifkan <strong>Auto Send on Shoot</strong>. Setiap foto otomatis terkirim.</li>
           </ol>
         </div>
 
         <div class="brand-section">
           <div class="brand-header">🟠 Sony (Alpha A7 IV / A9 / A1 / FX3)</div>
           <ol class="brand-steps">
-            <li>Buka Menu ⚙️ <strong>Network</strong> ➔ <strong>FTP Transfer Func.</strong>.</li>
-            <li>Set <strong>FTP Transfer ➔ ON</strong>.</li>
-            <li>Buka <strong>Server Setting 1</strong> ➔ Destination IP: <span class="highlight">${ip}</span> & Port: <span class="highlight">${port}</span>.</li>
+            <li>Buka Menu ⚙️ <strong>Network</strong> ➔ <strong>FTP Transfer Func.</strong> ➔ <strong>FTP Transfer: ON</strong>.</li>
+            <li>Buka <strong>Server Setting 1</strong> ➔ Destination IP / Host: <span class="highlight">${ip}</span>, Port: <span class="highlight">${ftpPort}</span>.</li>
+            <li>User Info: <strong>Anonymous</strong>, Directory: <strong>/</strong>.</li>
             <li>Aktifkan <strong>Auto Transfer During Save</strong>.</li>
           </ol>
         </div>
@@ -546,7 +732,15 @@ class LiveShutterEngine {
           <ol class="brand-steps">
             <li>Buka Menu 🌐 <strong>Wireless Communication Settings</strong> ➔ <strong>FTP Transfer</strong>.</li>
             <li>Set <strong>Transfer Mode ➔ Auto Transfer</strong>.</li>
-            <li>Pilih <strong>Target Server ➔ Address Set</strong>: <span class="highlight">${ip}</span>, Port: <span class="highlight">${port}</span>.</li>
+            <li>Pilih <strong>Target Server ➔ Address Set</strong>: <span class="highlight">${ip}</span>, Port: <span class="highlight">${ftpPort}</span>.</li>
+          </ol>
+        </div>
+
+        <div class="brand-section">
+          <div class="brand-header">🟢 Fujifilm (X-T5 / X-H2 / GFX)</div>
+          <ol class="brand-steps">
+            <li>Menu <strong>Connection Setting</strong> ➔ <strong>FTP Transfer Setup</strong>.</li>
+            <li>Host: <span class="highlight">${ip}</span>, Port: <span class="highlight">${ftpPort}</span>, Mode: <strong>PASV</strong>.</li>
           </ol>
         </div>
       </div>
@@ -587,9 +781,19 @@ class LiveShutterEngine {
 
   // --- 3. SHUTTER TRIGGER & PHOTO RECEIVE PIPELINE ---
   onLiveShutterReceived(filePath, sourceMode = 'Kabel USB Direct', cameraModel = 'Kamera Live') {
+    const filename = path.basename(filePath);
+
+    // Record in syncedCameraFiles & syncedFilesPath so changing folders will never re-copy this photo
+    if (!this.syncedCameraFiles.has(filename)) {
+      this.syncedCameraFiles.add(filename);
+      try {
+        fs.appendFileSync(this.syncedFilesPath, filename + '\n', 'utf8');
+      } catch (e) {}
+    }
+
     this.stats.totalShots++;
     this.stats.lastShotTime = new Date().toISOString();
-    this.stats.lastShotFilename = path.basename(filePath);
+    this.stats.lastShotFilename = filename;
     this.stats.lastShotSource = sourceMode;
 
     this.log('SUCCESS', `⚡ LIVE SHUTTER! Foto Diterima [${sourceMode}]: ${this.stats.lastShotFilename}`);
@@ -624,6 +828,7 @@ class LiveShutterEngine {
 
       // 1. Check if camera is connected via MTP or USB Drive
       let isCameraActive = false;
+      let isSdCardActive = false;
       let mtpResult = null;
       let cameraName = 'Kamera';
 
@@ -635,37 +840,39 @@ class LiveShutterEngine {
         }
       }
 
-      // Also check if mass storage drive is detected
-      if (!isCameraActive && this.cableConfig.detectedDrive && fs.existsSync(this.cableConfig.detectedDrive)) {
+      if (!isCameraActive && this.cableConfig.cameraDetails) {
         isCameraActive = true;
-        cameraName = this.cableConfig.connectedCamera || 'Kamera USB Direct';
+        cameraName = this.cableConfig.cameraDetails.name;
+      }
+
+      if (this.cableConfig.sdCardDetails && fs.existsSync(this.cableConfig.sdCardDetails.path)) {
+        isSdCardActive = true;
       }
 
       // Also check if WiFi Ingest Server is running
-      if (!isCameraActive && this.wifiConfig.running) {
+      if (!isCameraActive && !isSdCardActive && this.wifiConfig.running) {
         isCameraActive = true;
         cameraName = 'Kamera WiFi Wireless Ingest';
       }
 
-      // IF CAMERA IS NOT CONNECTED OR CAMERA IS OFF -> FAIL IMMEDIATELY!
-      if (!isCameraActive) {
-        this.log('WARN', '❌ Tes Shutter GAGAL: Kamera tidak terhubung / Kamera dalam posisi MATI.');
+      // IF NEITHER CAMERA NOR SD CARD CONNECTED -> FAIL
+      if (!isCameraActive && !isSdCardActive) {
+        this.log('WARN', '❌ Tes Shutter GAGAL: Tidak ada Kamera atau SD Card yang terhubung.');
         return {
           success: false,
-          error: 'Kamera tidak terhubung atau dalam posisi MATI. Colokkan kabel USB & pastikan kamera menyala (ON).'
+          error: 'Tidak ada Kamera atau SD Card yang terhubung. Colokkan kabel USB kamera atau masukkan SD Card ke card reader.'
         };
       }
 
       // 2. Camera IS active -> Sync photos from camera right now
       if (mtpResult && mtpResult.copiedCount > 0 && Array.isArray(mtpResult.copiedFiles) && mtpResult.copiedFiles.length > 0) {
-        // Sync newly shot photos
         const latestFile = mtpResult.copiedFiles[mtpResult.copiedFiles.length - 1];
         const fullPath = path.join(targetDir, latestFile);
         const stats = fs.statSync(fullPath);
         const sizeMb = (stats.size / (1024 * 1024)).toFixed(2);
 
-        this.onLiveShutterReceived(fullPath, 'Kabel USB Direct', cameraName);
-        this.log('SUCCESS', `📸 TES SHUTTER REAL BERHASIL! Foto jepretan baru [${latestFile}] (${sizeMb} MB) dari ${cameraName} disinkronkan & masuk antrean!`);
+        this.onLiveShutterReceived(fullPath, 'Kabel USB Direct (Kamera)', cameraName);
+        this.log('SUCCESS', `📸 TES SHUTTER KAMERA BERHASIL! Foto jepretan baru [${latestFile}] (${sizeMb} MB) dari ${cameraName} disinkronkan & masuk antrean!`);
 
         return {
           success: true,
@@ -677,12 +884,38 @@ class LiveShutterEngine {
         };
       }
 
+      // If SD Card is active and camera didn't have a new shot, read from SD card
+      if (isSdCardActive) {
+        const sdPath = this.cableConfig.sdCardDetails.path;
+        try {
+          const files = fs.readdirSync(sdPath).filter(f => /\.(jpg|jpeg|png|arw|cr2|cr3|nef|raf|dng)$/i.test(f));
+          if (files.length > 0) {
+            const latestFile = files[files.length - 1];
+            const fullPath = path.join(sdPath, latestFile);
+            const stats = fs.statSync(fullPath);
+            const sizeMb = (stats.size / (1024 * 1024)).toFixed(2);
+
+            this.onLiveShutterReceived(fullPath, 'SD Card Reader', this.cableConfig.sdCardDetails.name);
+            this.log('SUCCESS', `💾 TES SD CARD BERHASIL! Foto [${latestFile}] (${sizeMb} MB) dari kartu memori disinkronkan & masuk antrean!`);
+
+            return {
+              success: true,
+              isRealPhoto: true,
+              filename: latestFile,
+              filePath: fullPath,
+              sizeMb,
+              cameraName: this.cableConfig.sdCardDetails.name
+            };
+          }
+        } catch (eSd) {}
+      }
+
       // 3. Camera is connected & ON, but no NEW photo was taken right now
-      this.log('WARN', `⚠️ Tes Shutter: Kamera "${cameraName}" AKTIF & Terhubung, namun belum ada jepretan foto baru.`);
+      this.log('WARN', `⚠️ Tes Shutter: Perangkat "${cameraName}" terhubung, namun belum ada foto baru.`);
       return {
         success: false,
         warning: true,
-        error: `Kamera (${cameraName}) terhubung & AKTIF, namun belum ada jepretan foto baru. Silakan jepret foto baru pada kamera Anda.`
+        error: `Kamera (${cameraName}) terhubung, namun belum ada jepretan foto baru. Silakan jepret foto baru pada kamera Anda.`
       };
 
     } catch (err) {
@@ -706,9 +939,106 @@ class LiveShutterEngine {
     this.sendToRenderer('live-shutter:statusUpdate', this.getStatus());
   }
 
+  // --- 4. MACOS APPLE IMAGECAPTURECORE USB CAMERA BRIDGE ---
+  startMacCameraBridge(targetDir) {
+    if (process.platform !== 'darwin') return;
+    if (this.macBridgeProcess) return;
+
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true });
+    }
+
+    let scriptPath = path.join(__dirname, 'scripts', 'mac_camera_bridge.swift');
+    if (scriptPath.includes('app.asar')) {
+      scriptPath = scriptPath.replace('app.asar', 'app.asar.unpacked');
+    }
+    if (!fs.existsSync(scriptPath)) {
+      this.log('WARN', `[macOS Bridge] Swift script not found at ${scriptPath}`);
+      return;
+    }
+
+    try {
+      this.macBridgeProcess = spawn('/usr/bin/swift', [scriptPath, targetDir]);
+      this.log('INFO', `🍏 [macOS] Apple ImageCaptureCore Camera Bridge aktif.`);
+
+      let buffer = '';
+      this.macBridgeProcess.stdout.on('data', (data) => {
+        buffer += data.toString();
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const ev = JSON.parse(line.trim());
+            if (ev.event === 'camera_connected') {
+              this.cableConfig.connectedCamera = ev.camera;
+              this.cableConfig.cameraDetails = {
+                name: ev.camera,
+                model: ev.camera,
+                path: targetDir,
+                type: 'camera'
+              };
+              this.cableConfig.detectedDrive = targetDir;
+              this.cableConfig.activeDeviceType = 'camera';
+              this.log('SUCCESS', `📸 [macOS] KAMERA TERHUBUNG (Apple ImageCapture): "${ev.camera}"`);
+              
+              const payload = {
+                deviceType: 'camera',
+                deviceName: ev.camera,
+                deviceIcon: '📷',
+                cameraName: ev.camera,
+                drivePath: targetDir,
+                description: `Kamera ${ev.camera} terhubung via kabel USB di macOS (Apple ImageCapture Core).`,
+                timestamp: Date.now()
+              };
+              this.sendToRenderer('live-shutter:devicePluggedIn', payload);
+              this.sendToRenderer('live-shutter:cameraPluggedIn', payload);
+              this.updateUI();
+            } else if (ev.event === 'camera_disconnected') {
+              this.cableConfig.connectedCamera = null;
+              this.cableConfig.cameraDetails = null;
+              this.cableConfig.detectedDrive = null;
+              this.cableConfig.activeDeviceType = null;
+              this.log('WARN', `🔌 [macOS] Kamera "${ev.camera}" terputus/dilepas.`);
+              this.updateUI();
+            } else if (ev.event === 'photo_downloaded') {
+              this.log('SUCCESS', `⚡ [macOS] LIVE SHOT USB! ${ev.file} ditarik dari ${ev.camera}.`);
+              this.onLiveShutterReceived(ev.path, 'Kabel USB Direct (macOS)', ev.camera);
+            }
+          } catch (e) {}
+        }
+      });
+
+      this.macBridgeProcess.stderr.on('data', (data) => {
+        const errText = data.toString().trim();
+        if (errText) console.warn('[macOS Camera Bridge STDERR]:', errText);
+      });
+
+      this.macBridgeProcess.on('close', (code) => {
+        this.macBridgeProcess = null;
+        if (code !== 0 && code !== null) {
+          this.log('WARN', `[macOS Camera Bridge] Berhenti (exit code ${code})`);
+        }
+      });
+    } catch (err) {
+      this.log('ERROR', `Gagal menjalankan macOS Camera Bridge: ${err.message}`);
+    }
+  }
+
+  stopMacCameraBridge() {
+    if (this.macBridgeProcess) {
+      try {
+        this.macBridgeProcess.kill('SIGTERM');
+      } catch (e) {}
+      this.macBridgeProcess = null;
+    }
+  }
+
   destroy() {
     if (this.cableInterval) clearInterval(this.cableInterval);
-    if (this.wifiServer) this.wifiServer.close();
+    this.stopWifiServer();
+    this.stopMacCameraBridge();
   }
 }
 

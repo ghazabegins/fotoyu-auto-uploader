@@ -391,8 +391,8 @@
               <div class="live-banner-left">
                 <div class="live-camera-icon">LIVE</div>
                 <div class="live-camera-info">
-                  <h3>Ingest Shutter Live Kamera (Real-Time)</h3>
-                  <p>Hubungkan kamera melalui kabel USB (MTP) atau WiFi (FTP Server) untuk auto-upload foto setiap jepretan.</p>
+                  <h3>Live Shutter Kamera</h3>
+                  <p>Foto otomatis terupload ke Fotoyu setiap kali Anda memotret.</p>
                 </div>
               </div>
 
@@ -413,110 +413,171 @@
                 <img id="flashShotImg" src="" alt="Thumbnail" style="width: 100%; height: 100%; object-fit: cover;" />
               </div>
               <div class="flash-info">
-                <strong id="flashShotTitle">LIVE SHOT RECEIVED!</strong>
-                <span id="flashShotDetail">Foto diteruskan otomatis ke Uploader Queue</span>
+                <strong id="flashShotTitle">FOTO DITERIMA!</strong>
+                <span id="flashShotDetail">Foto diteruskan otomatis ke antrean upload</span>
               </div>
               <div class="flash-badge" id="flashShotSource">USB Cable</div>
             </div>
 
-            <!-- INGEST MODE SELECTOR CARDS -->
-            <div class="ingest-modes-grid" style="grid-template-columns: 1fr;">
+            <!-- INGEST MODE SELECTOR CARDS (2 COLUMNS: CABLE & COMING SOON) -->
+            <div class="ingest-modes-grid">
               
-              <!-- MODE 1: KABEL USB DIRECT & MEMORY SD CARD AUTO-DETECT -->
-              <div class="ingest-mode-card" style="grid-column: 1 / -1;">
-                <div class="mode-card-header">
-                  <div class="mode-icon-box cable">USB</div>
-                  <div class="mode-title-box">
-                    <h3>Ingest Kabel USB Direct & Memory SD Card Auto-Detect</h3>
-                    <p>Rekomendasi Utama: Tercepat, 100% Stabil, Tanpa Pengaturan IP/Jaringan</p>
+              <!-- MODE 1: KONEKSI KAMERA & SD CARD -->
+              <div class="ingest-mode-card active-mode-card">
+                <div>
+                  <div class="mode-card-header">
+                    <div class="mode-brand-tag">
+                      <div class="mode-icon-box cable">USB</div>
+                      <div>
+                        <h3 class="mode-title">Kamera & SD Card</h3>
+                        <span class="mode-subtitle">Deteksi otomatis Kamera USB (Live Shutter) & SD Card Reader.</span>
+                      </div>
+                    </div>
+                    <span class="mode-status-badge ready">AKTIF</span>
                   </div>
-                  <label class="toggle-switch">
-                    <input type="checkbox" id="cableToggle" checked>
-                    <span class="slider"></span>
-                  </label>
-                </div>
-                <div class="mode-card-body">
-                  <p class="mode-desc">Colok kabel USB kamera atau masukkan Kartu Memori SD Card ke Laptop / Mac. Sistem akan otomatis mendeteksi folder DCIM/Kamera dan menampilkan pop-up konfirmasi untuk menaruh foto ke antrian upload secara otomatis.</p>
-                  
-                  <div class="mode-options-row">
-                    <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--navy-darker); font-weight: 600; cursor: pointer;">
+
+                  <div class="mode-options-row" style="margin-bottom: 12px;">
+                    <label class="checkbox-label">
                       <input type="checkbox" id="autoDCIMCheck" checked>
-                      <span>Auto-detect folder DCIM / SD Card kamera saat dicolok</span>
+                      <span>Deteksi otomatis saat perangkat dicolok</span>
                     </label>
                   </div>
 
-                  <div id="cableStatusBox" class="status-box offline">
-                    <span class="dot">•</span>
-                    <span id="cableStatusText">Menunggu Kamera atau SD Card Dicolok...</span>
+                  <!-- DUAL DEVICE STATUS ROWS (SEPARATE CAMERA & SD CARD) -->
+                  <div class="device-status-list">
+                    
+                    <!-- BARIS 1: STATUS KAMERA KABEL USB (LIVE SHUTTER) -->
+                    <div id="cameraStatusBox" class="device-status-row offline">
+                      <div class="device-status-row-left">
+                        <span class="device-status-icon">📷</span>
+                        <div class="device-status-info">
+                          <strong class="device-status-title">Kamera (Kabel USB)</strong>
+                          <span id="cameraStatusText" class="device-status-sub">Menunggu kamera dicolok via kabel...</span>
+                        </div>
+                      </div>
+                      <span id="cameraStatusBadge" class="device-status-badge offline">TIDAK TERHUBUNG</span>
+                    </div>
+
+                    <!-- BARIS 2: STATUS SD CARD READER -->
+                    <div id="sdcardStatusBox" class="device-status-row offline">
+                      <div class="device-status-row-left">
+                        <span class="device-status-icon">💾</span>
+                        <div class="device-status-info">
+                          <strong class="device-status-title">SD Card (Card Reader)</strong>
+                          <span id="sdcardStatusText" class="device-status-sub">Tidak ada kartu memori terdeteksi</span>
+                        </div>
+                      </div>
+                      <span id="sdcardStatusBadge" class="device-status-badge offline">TIDAK TERDETEKSI</span>
+                    </div>
+
+                    <!-- Legacy element kept hidden for backward compatibility -->
+                    <div id="cableStatusBox" style="display: none;">
+                      <span id="cableStatusText"></span>
+                    </div>
+                  </div>
+                </div>
+
+                <button type="button" id="forceScanCableBtn" class="btn btn-secondary-sm">
+                  🔍 Pindai Ulang Kamera & SD Card
+                </button>
+              </div>
+
+              <!-- MODE 2: WIRELESS CAMERA INGEST (COMING SOON) -->
+              <div class="ingest-mode-card coming-soon-mode-card">
+                <div>
+                  <div class="mode-card-header">
+                    <div class="mode-brand-tag">
+                      <div class="mode-icon-box wireless">📡</div>
+                      <div>
+                        <h3 class="mode-title">Wireless (WiFi)</h3>
+                        <span class="mode-subtitle">Transfer foto nirkabel tanpa kabel.</span>
+                      </div>
+                    </div>
+                    <span class="mode-status-badge coming-soon">SEGERA HADIR</span>
                   </div>
 
-                  <button type="button" id="forceScanCableBtn" class="btn btn-secondary-sm" style="margin-top: 6px; width: 100%; padding: 10px; font-weight: 700; border-radius: 10px; border: 1px solid var(--border-subtle, #cbd5e1); background: var(--bg-body, #f1f5f9); color: var(--navy-darker); cursor: pointer;">
-                    🔍 Pindai Ulang Kamera / SD Card
-                  </button>
+                  <p class="mode-desc">
+                    Fitur transfer nirkabel multi-kamera sedang disempurnakan.
+                  </p>
+
+                  <div class="coming-soon-features-grid">
+                    <div class="feature-pill"><span>⚡</span><span>Auto-Konek 1-Klik</span></div>
+                    <div class="feature-pill"><span>📱</span><span>Integrasi App HP</span></div>
+                    <div class="feature-pill"><span>📷</span><span>Semua Merk Kamera</span></div>
+                    <div class="feature-pill"><span>☁️</span><span>Auto Hot-Folder</span></div>
+                  </div>
+                </div>
+
+                <div class="coming-soon-tip-box">
+                  <span>💡 Gunakan <strong>Mode Kabel USB</strong> di sebelah kiri untuk saat ini.</span>
                 </div>
               </div>
+
             </div>
 
-            <!-- CAMERA CONNECTION GUIDE (PANDUAN LENGKAP MERK KAMERA) -->
+            <!-- PANDUAN KONEKSI SESUAI KAMERA -->
             <div class="form-page-card camera-guide-card" style="margin-top: 20px;">
               <div class="card-title-row" style="cursor: pointer;" id="toggleGuideHeader">
-                <h2>Panduan Cara Menghubungkan Kamera (Canon, Sony, Nikon, Fujifilm)</h2>
+                <h2>Panduan Sesuai Kamera</h2>
                 <button type="button" id="toggleGuideBtn" class="btn btn-ghost-sm">▼ Buka Panduan</button>
               </div>
 
               <div id="cameraGuideContent" class="guide-content hidden" style="margin-top: 15px;">
                 
-                <!-- BRAND SELECTOR TABS -->
+                <!-- BRAND SELECTOR BUTTONS -->
                 <div class="guide-brand-pills">
-                  <button type="button" class="brand-pill active" data-brand="all">Semua Merk</button>
-                  <button type="button" class="brand-pill" data-brand="nikon">Nikon</button>
-                  <button type="button" class="brand-pill" data-brand="sony">Sony</button>
-                  <button type="button" class="brand-pill" data-brand="canon">Canon</button>
-                  <button type="button" class="brand-pill" data-brand="fuji">Fujifilm</button>
+                  <button type="button" class="brand-pill active" data-brand="nikon">🟡 Nikon</button>
+                  <button type="button" class="brand-pill" data-brand="sony">🟠 Sony</button>
+                  <button type="button" class="brand-pill" data-brand="canon">🔴 Canon</button>
+                  <button type="button" class="brand-pill" data-brand="fuji">🟢 Fujifilm</button>
                 </div>
 
-                <!-- GUIDE SECTIONS GRID -->
-                <div class="guide-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin-top: 15px;">
-                  
-                  <!-- METODE KABEL USB -->
-                  <div class="guide-box cable-guide">
-                    <div class="guide-box-header">
-                      <h3>Koneksi Kabel USB Direct / MTP</h3>
-                    </div>
-                    <ol class="guide-steps">
-                      <li>Colok kabel <strong>USB-C / Micro-USB / Mini-USB</strong> dari kamera langsung ke port USB laptop Anda.</li>
-                      <li>Nyalakan Kamera, lalu atur menu koneksi USB sesuai brand kamera Anda:
-                        <ul class="brand-instruction-list">
-                          <li class="brand-item nikon"><strong>Nikon Z / DSLR:</strong> Menu Setup ➔ USB ➔ Pilih <code>Mass Storage</code> (atau gunakan USB Card Reader di Mac untuk auto-detect instant 0.5 detik).</li>
-                          <li class="brand-item sony"><strong>Sony Alpha:</strong> Menu Setup ➔ USB Connection ➔ Pilih <code>Mass Storage</code> atau <code>Auto / MTP</code>.</li>
-                          <li class="brand-item canon"><strong>Canon EOS R / DSLR:</strong> Menu Connection / USB ➔ Pilih <code>Photo Import / MTP</code>.</li>
-                          <li class="brand-item fuji"><strong>Fujifilm X / GFX:</strong> Menu Connection Setting ➔ <i>PC Auto Save / USB Card Reader</i>.</li>
-                        </ul>
-                      </li>
-                      <li>Aplikasi akan otomatis memproses notifikasi <strong>KAMERA TERHUBUNG!</strong> Foto di memori kamera langsung terbaca & diunggah otomatis.</li>
-                    </ol>
+                <!-- NIKON GUIDE PANEL -->
+                <div id="guide-panel-nikon" class="camera-brand-panel">
+                  <div class="guide-panel-header">
+                    <h3>Cara Menghubungkan Kamera Nikon (Z Series & DSLR)</h3>
                   </div>
+                  <ol class="camera-quick-steps">
+                    <li>Colokkan kabel <strong>USB-C</strong> dari kamera Nikon ke laptop.</li>
+                    <li>Buka menu kamera: <strong>Menu Setup (ikon kunci) ➔ USB ➔ Pilih MTP</strong> (atau Mass Storage).</li>
+                    <li>Status di aplikasi akan berubah menjadi <strong>Terhubung</strong>. Mulai memotret, foto langsung otomatis terupload!</li>
+                  </ol>
+                </div>
 
-                  <!-- METODE WIFI WIRELESS -->
-                  <div class="guide-box wifi-guide">
-                    <div class="guide-box-header">
-                      <h3>Koneksi WiFi Wireless Ingest (FTP Push)</h3>
-                    </div>
-                    <ol class="guide-steps">
-                      <li>Pastikan Laptop dan Kamera terhubung ke <strong>Jaringan WiFi / Mobile Hotspot yang sama</strong>.</li>
-                      <li>Aktifkan sakelar <strong>Server WiFi</strong> di atas, lalu klik <strong>Salin IP</strong> (misal: <code>http://192.168.1.100:2121</code>).</li>
-                      <li>Masuk ke Menu Setting Kamera & Input Alamat IP Server:
-                        <ul class="brand-instruction-list">
-                          <li class="brand-item nikon"><strong>Nikon (WT / WiFi):</strong> Menu Connect to FTP Server ➔ Enter Server IP & Port <code>2121</code>.</li>
-                          <li class="brand-item sony"><strong>Sony (FTP Push):</strong> Menu FTP Transfer Functions ➔ Server Setting ➔ Host Name (IP) & Port <code>2121</code>.</li>
-                          <li class="brand-item canon"><strong>Canon (EOS / WFT):</strong> Menu Network Settings ➔ FTP Transfer ➔ Address (IP) & Port <code>2121</code>.</li>
-                          <li class="brand-item fuji"><strong>Fujifilm (FTP Transfer):</strong> Menu Connection Setting ➔ FTP Transfer Setup ➔ Address (IP) & Port <code>2121</code>.</li>
-                        </ul>
-                      </li>
-                      <li>Setiap jepretan foto baru akan terkirim secara wireless nirkabel dari kamera ke laptop Anda secara real-time.</li>
-                    </ol>
+                <!-- SONY GUIDE PANEL -->
+                <div id="guide-panel-sony" class="camera-brand-panel hidden">
+                  <div class="guide-panel-header">
+                    <h3>Cara Menghubungkan Kamera Sony (Alpha, A7, A9, FX Series)</h3>
                   </div>
+                  <ol class="camera-quick-steps">
+                    <li>Colokkan kabel <strong>USB-C</strong> dari kamera Sony ke laptop.</li>
+                    <li>Buka menu kamera: <strong>Menu ➔ USB Connection ➔ Pilih Mass Storage</strong> (atau PC Remote).</li>
+                    <li>Status di aplikasi akan berubah menjadi <strong>Terhubung</strong>. Mulai memotret, foto langsung otomatis terupload!</li>
+                  </ol>
+                </div>
 
+                <!-- CANON GUIDE PANEL -->
+                <div id="guide-panel-canon" class="camera-brand-panel hidden">
+                  <div class="guide-panel-header">
+                    <h3>Cara Menghubungkan Kamera Canon (EOS R & DSLR)</h3>
+                  </div>
+                  <ol class="camera-quick-steps">
+                    <li>Colokkan kabel <strong>USB</strong> dari kamera Canon ke laptop.</li>
+                    <li>Nyalakan kamera. Jika muncul pilihan di layar kamera, pilih <strong>Photo Import / Sambungkan ke PC</strong>.</li>
+                    <li>Status di aplikasi akan berubah menjadi <strong>Terhubung</strong>. Mulai memotret, foto langsung otomatis terupload!</li>
+                  </ol>
+                </div>
+
+                <!-- FUJIFILM GUIDE PANEL -->
+                <div id="guide-panel-fuji" class="camera-brand-panel hidden">
+                  <div class="guide-panel-header">
+                    <h3>Cara Menghubungkan Kamera Fujifilm (X Series & GFX)</h3>
+                  </div>
+                  <ol class="camera-quick-steps">
+                    <li>Colokkan kabel <strong>USB</strong> dari kamera Fujifilm ke laptop.</li>
+                    <li>Buka menu kamera: <strong>Menu ➔ Connection Setting ➔ Connection Mode ➔ Pilih USB Card Reader</strong> (atau PC Auto Save).</li>
+                    <li>Status di aplikasi akan berubah menjadi <strong>Terhubung</strong>. Mulai memotret, foto langsung otomatis terupload!</li>
+                  </ol>
                 </div>
 
               </div>
@@ -525,15 +586,15 @@
             <!-- LIVE STREAM ACTIVITY LOG FEED -->
             <div class="form-page-card live-stream-card" style="margin-top: 20px;">
               <div class="card-title-row">
-                <h2>Activity Feed Live Shutter</h2>
+                <h2>Aktivitas Jepretan</h2>
                 <div class="total-shots-badge">
-                  Total Live Shot: <strong id="totalLiveShotsText">0</strong>
+                  Total: <strong id="totalLiveShotsText">0</strong> Foto
                 </div>
               </div>
 
               <div id="liveStreamFeed" class="live-stream-feed">
                 <div class="feed-empty-msg">
-                  <span>Siap menerima shutter live. Colok kabel USB (Mass Storage & MTP) atau aktifkan server WiFi Ingest.</span>
+                  <span>Siap menerima foto. Colok kabel kamera dan mulailah memotret!</span>
                 </div>
               </div>
             </div>
@@ -1128,31 +1189,46 @@
     </div>
   </div>
 
-  <!-- SD CARD / MEMORY DRIVE AUTO-DETECT CONFIRMATION MODAL -->
+  <!-- DEVICE AUTO-DETECT CONFIRMATION MODAL (CAMERA VS SD CARD) -->
   <div id="sdCardDetectModal" class="modal-overlay hidden" style="z-index: 10005;">
-    <div class="modal-content glass-card text-center" style="max-width: 500px; padding: 28px; border-radius: 20px; box-shadow: 0 25px 60px rgba(0,0,0,0.35);">
+    <div class="modal-content glass-card text-center" style="max-width: 520px; padding: 28px; border-radius: 20px; box-shadow: 0 25px 60px rgba(0,0,0,0.35);">
       <button id="closeSdCardModalBtn" class="modal-close-btn">&times;</button>
       
-      <div style="width: 60px; height: 60px; border-radius: 18px; background: rgba(37, 99, 235, 0.1); color: var(--primary-blue); display: flex; align-items: center; justify-content: center; font-size: 32px; margin: 0 auto 16px auto;">
+      <div id="sdCardModalIcon" style="width: 60px; height: 60px; border-radius: 18px; background: rgba(0, 70, 67, 0.12); color: var(--primary-blue); display: flex; align-items: center; justify-content: center; font-size: 32px; margin: 0 auto 16px auto;">
         💾
       </div>
 
-      <h2 style="font-size: 19px; font-weight: 800; color: var(--navy-darker); margin-bottom: 6px;">
-        Kamera / Kartu SD Terdeteksi!
+      <h2 id="sdCardModalTitle" style="font-size: 19px; font-weight: 800; color: var(--navy-darker); margin-bottom: 6px;">
+        SD Card Terdeteksi!
       </h2>
-      <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px; line-height: 1.5;">
-        Perangkat memori terhubung pada:<br/>
-        <code id="sdCardDetectPath" style="font-size: 12px; font-weight: 700; background: var(--bg-card-sub, #f1f5f9); color: var(--primary-blue); padding: 5px 12px; border-radius: 8px; word-break: break-all; margin-top: 6px; display: inline-block; border: 1px solid var(--border-subtle, #cbd5e1);">E:\DCIM\100NIKON</code>
+      <p id="sdCardDetectSubtitle" style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px; line-height: 1.5;">
+        Terhubung pada lokasi:<br/>
+        <code id="sdCardDetectPath" style="font-size: 12px; font-weight: 700; background: var(--bg-card-sub, #FAF8F5); color: var(--primary-blue); padding: 5px 12px; border-radius: 8px; word-break: break-all; margin-top: 6px; display: inline-block; border: 1px solid var(--border-subtle, #DFD9CE);">E:\DCIM\114TJPZ6</code>
       </p>
 
-      <div style="background: rgba(37, 99, 235, 0.05); border: 1px solid rgba(37, 99, 235, 0.18); padding: 14px; border-radius: 12px; font-size: 12.5px; color: var(--navy-darker); text-align: left; margin-bottom: 22px; line-height: 1.5;">
-        <strong style="color: var(--primary-blue); font-weight: 700;">Apakah Anda ingin memasukkan foto dari SD Card ini ke antrian upload?</strong><br/>
-        Folder SD Card di atas akan otomatis diset sebagai sumber foto uploader dan foto-foto di dalamnya langsung terisi ke antrian.
+      <!-- FOLDER PICKER ROW FOR CAMERA INGEST (VISIBLE ONLY WHEN CAMERA IS PLUGGED) -->
+      <div id="cameraFolderPickerSection" class="hidden" style="margin-bottom: 18px; text-align: left;">
+        <label style="display: block; font-size: 12px; font-weight: 700; color: var(--navy-darker); margin-bottom: 6px;">
+          📁 Pilih Folder Penyimpanan Foto Masuk dari Kamera:
+        </label>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <input type="text" id="cameraIngestPathInput" readonly style="flex: 1; font-size: 12px; font-weight: 600; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--border-subtle); background: var(--bg-card-sub); color: var(--navy-darker);" placeholder="Pilih folder penyimpanan..." />
+          <button type="button" id="cameraBrowseFolderBtn" class="btn btn-secondary" style="padding: 9px 14px; font-size: 12px; font-weight: 700; white-space: nowrap; border-radius: 8px;">
+            📁 Pilih Folder...
+          </button>
+        </div>
+        <span style="font-size: 11px; color: var(--text-muted); display: block; margin-top: 4px;">Foto yang masuk dari kamera akan disimpan ke folder ini & langsung otomatis diupload.</span>
+      </div>
+
+      <!-- ACTION NOTE CARD -->
+      <div id="sdCardModalNote" style="background: rgba(0, 70, 67, 0.06); border: 1px solid rgba(0, 70, 67, 0.2); padding: 14px; border-radius: 12px; font-size: 12.5px; color: var(--navy-darker); text-align: left; margin-bottom: 22px; line-height: 1.5;">
+        <strong id="sdCardModalActionTitle" style="color: var(--primary-blue); font-weight: 700;">Tambahkan dalam antrian upload?</strong><br/>
+        <span id="sdCardModalActionDesc">Semua foto di dalam SD Card ini akan otomatis dimasukkan ke antrean upload dan folder ini langsung dipantau tanpa harus pilih folder.</span>
       </div>
 
       <div class="alert-modal-actions" style="gap: 12px;">
         <button id="sdCardCancelBtn" class="btn btn-secondary" style="flex: 1; padding: 11px; font-weight: 700; border-radius: 10px;">Abaikan</button>
-        <button id="sdCardConfirmBtn" class="btn btn-primary-blue" style="flex: 1.4; padding: 11px; font-weight: 800; border-radius: 10px;">⚡ Tambahkan ke Antrian</button>
+        <button id="sdCardConfirmBtn" class="btn btn-primary-blue" style="flex: 1.4; padding: 11px; font-weight: 800; border-radius: 10px;">⚡ Konfirmasi & Tambahkan ke Antrian</button>
       </div>
     </div>
   </div>

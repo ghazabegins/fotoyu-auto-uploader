@@ -1,4 +1,4 @@
-name: Build & Release Desktop App
+name: Build & Release Desktop App (EXE & DMG)
 
 on:
   push:
@@ -8,47 +8,93 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      create_release:
+        description: 'Publish release assets to GitHub Releases?'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
 
 jobs:
   build:
-    name: Build on ${{ matrix.os }}
+    name: Build ${{ matrix.target_name }}
     runs-on: ${{ matrix.os }}
 
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, macos-latest]
+        include:
+          - os: windows-latest
+            target_name: Windows (EXE & ZIP)
+            artifact_name: fotoyu-uploader-windows
+            build_script: npm run build:win
+          - os: macos-latest
+            target_name: macOS (DMG & ZIP)
+            artifact_name: fotoyu-uploader-macos
+            build_script: npm run build:mac
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js (v20 LTS)
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
           cache: 'npm'
 
       - name: Install Dependencies
         run: npm install --legacy-peer-deps
 
-      - name: Build Windows Installer (.exe)
-        if: matrix.os == 'windows-latest'
+      - name: Compile & Package Application
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run build:win
+        run: ${{ matrix.build_script }}
 
-      - name: Build macOS Installer (.dmg)
-        if: matrix.os == 'macos-latest'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run build:mac
-
-      - name: Upload Artifacts
+      - name: Upload Build Artifacts to Actions
         uses: actions/upload-artifact@v4
         with:
-          name: installer-${{ matrix.os }}
+          name: ${{ matrix.artifact_name }}
+          retention-days: 30
           path: |
             dist/*.exe
             dist/*.dmg
             dist/*.zip
+            dist/*.blockmap
+
+  release:
+    name: Publish to GitHub Releases
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.create_release == true)
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Download Windows Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: fotoyu-uploader-windows
+          path: release_assets/
+
+      - name: Download macOS Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: fotoyu-uploader-macos
+          path: release_assets/
+
+      - name: Create or Update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            release_assets/*.exe
+            release_assets/*.dmg
+            release_assets/*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
