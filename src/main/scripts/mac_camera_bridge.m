@@ -30,6 +30,7 @@
         self.browser = [[ICDeviceBrowser alloc] init];
         self.browser.delegate = self;
         self.browser.browsedDeviceTypeMask = ICDeviceTypeMaskCamera;
+        self.browser.browsedDeviceLocationTypeMask = ICDeviceLocationTypeMaskLocal | ICDeviceLocationTypeMaskShared | ICDeviceLocationTypeMaskBonjour;
         [self.browser start];
 
         [self sendJSON:@{
