@@ -49,23 +49,6 @@ jobs:
       - name: Install Dependencies
         run: npm install --legacy-peer-deps
 
-      - name: Compile Native Camera Bridge (macOS)
-        if: matrix.os == 'macos-latest'
-        run: |
-          echo "Compiling Native Camera Bridge for macOS..."
-          SDK_PATH=$(xcrun --show-sdk-path)
-          echo "Using macOS SDK at: $SDK_PATH"
-          clang -O2 -fobjc-arc -isysroot "$SDK_PATH" -Wno-everything -framework Cocoa -framework Foundation -framework ImageCaptureCore src/main/scripts/mac_camera_bridge.m -o src/main/scripts/mac_camera_bridge || true
-          
-          if [ -f "src/main/scripts/mac_camera_bridge" ]; then
-            chmod +x src/main/scripts/mac_camera_bridge
-            file src/main/scripts/mac_camera_bridge
-            ls -la src/main/scripts/mac_camera_bridge
-            echo "Native camera bridge compiled successfully!"
-          else
-            echo "Warning: Native binary compilation skipped, using Swift script fallback."
-          fi
-
       - name: Compile & Package Application
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
