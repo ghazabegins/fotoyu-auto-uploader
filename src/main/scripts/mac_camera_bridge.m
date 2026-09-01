@@ -21,7 +21,7 @@
         self.downloadedFiles = [NSMutableSet set];
         self.connectedCameras = [NSMutableDictionary dictionary];
 
-        // Ensure directory exists
+        // Ensure target directory exists
         [[NSFileManager defaultManager] createDirectoryAtPath:self.destinationPath
                                   withIntermediateDirectories:YES
                                                    attributes:nil
@@ -29,7 +29,7 @@
 
         self.browser = [[ICDeviceBrowser alloc] init];
         self.browser.delegate = self;
-        self.browser.browsedDeviceTypeMask = ICDeviceTypeMaskCamera | ICDeviceLocationTypeMaskLocal | ICDeviceLocationTypeMaskShared | ICDeviceLocationTypeMaskBonjour;
+        self.browser.browsedDeviceTypeMask = ICDeviceTypeMaskCamera;
         [self.browser start];
 
         [self sendJSON:@{
@@ -42,7 +42,8 @@
 }
 
 - (void)sendJSON:(NSDictionary *)dict {
-    NSData *data = [NSJSONSerialization dataWithJSONObject:dict options:0 error:nil];
+    NSError *err = nil;
+    NSData *data = [NSJSONSerialization dataWithJSONObject:dict options:0 error:&err];
     if (data) {
         NSString *str = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
         printf("%s\n", [str UTF8String]);
@@ -164,10 +165,12 @@
 
 - (void)downloadFile:(ICCameraFile *)file fromCamera:(ICCameraDevice *)camera {
     NSString *filename = file.name ?: [NSString stringWithFormat:@"IMG_%ld.jpg", (long)[[NSDate date] timeIntervalSince1970]];
+    
+    // In ImageCaptureCore, dictionary keys can be NSString literals for 100% universal compatibility
     NSDictionary *options = @{
-        ICDownloadOptionTargetDirectory: [NSURL fileURLWithPath:self.destinationPath],
-        ICDownloadOptionSaveAsFilename: filename,
-        ICDownloadOptionOverwrite: @YES
+        @"ICDownloadsDirectoryURL": [NSURL fileURLWithPath:self.destinationPath],
+        @"ICSaveAsFilename": filename,
+        @"ICOverwrite": @YES
     };
 
     [camera requestDownloadFile:file
@@ -212,7 +215,7 @@ int main(int argc, const char * argv[]) {
         }
 
         CameraBridge *bridge = [[CameraBridge alloc] initWithTargetDir:targetDir];
-        (void)bridge; // prevent deallocation
+        (void)bridge;
 
         [[NSRunLoop currentRunLoop] run];
     }
