@@ -295,31 +295,7 @@ class LiveShutterEngine {
                   type: 'sdcard'
                 };
 
-                // Auto sync if macOS
-                const targetIngestDir = this.store.get('watchDir') || path.join(this.app.getPath('userData'), 'camera_ingest');
-                if (!fs.existsSync(targetIngestDir)) {
-                  fs.mkdirSync(targetIngestDir, { recursive: true });
-                }
-                try {
-                  const targetFolderToScan = subfolder || dcimFoundPath;
-                  const photoFiles = fs.readdirSync(targetFolderToScan);
-                  let macCopiedCount = 0;
-                  for (const f of photoFiles) {
-                    if (!/\.(jpg|jpeg|png)$/i.test(f) || f.startsWith('.')) continue;
-                    if (this.syncedCameraFiles.has(f)) continue;
-                    const srcPhotoPath = path.join(targetFolderToScan, f);
-                    const destPhotoPath = path.join(targetIngestDir, f);
-                    if (!fs.existsSync(destPhotoPath)) {
-                      fs.copyFileSync(srcPhotoPath, destPhotoPath);
-                      macCopiedCount++;
-                      this.onLiveShutterReceived(destPhotoPath, 'SD Card Reader (macOS)', vol);
-                    }
-                  }
-                  if (macCopiedCount > 0) {
-                    this.log('SUCCESS', `💾 SD Card Ingest: Sync ${macCopiedCount} foto baru dari ${vol}!`);
-                  }
-                } catch (eMacCopy) {}
-
+                // SD Card detected - do NOT auto-copy files. Wait for user confirmation in UI.
                 break;
               }
             }
