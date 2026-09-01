@@ -336,47 +336,35 @@ class LiveShutterEngine {
 
       this.cableConfig.lastScanTime = new Date().toISOString();
 
-      // Check for CAMERA connection changes
-      const wasCameraConnected = !!this.cableConfig.cameraDetails;
-      const isCameraNowConnected = !!detectedCamera;
+      // Check for CAMERA connection changes on Windows (macOS camera state is managed by macBridgeProcess)
+      if (process.platform === 'win32') {
+        const wasCameraConnected = !!this.cableConfig.cameraDetails;
+        const isCameraNowConnected = !!detectedCamera;
 
-      if (!wasCameraConnected && isCameraNowConnected) {
-        this.cableConfig.cameraDetails = detectedCamera;
-        this.cableConfig.connectedCamera = detectedCamera.name;
-        this.log('SUCCESS', `📸 KAMERA TERHUBUNG (Live Shutter)! ${detectedCamera.name} via USB Direct.`);
+        if (!wasCameraConnected && isCameraNowConnected) {
+          this.cableConfig.cameraDetails = detectedCamera;
+          this.cableConfig.connectedCamera = detectedCamera.name;
+          this.cableConfig.detectedDrive = detectedCamera.path;
+          this.cableConfig.activeDeviceType = 'camera';
+          this.log('SUCCESS', `📸 KAMERA TERHUBUNG (Live Shutter)! ${detectedCamera.name} via USB Direct.`);
 
-        const payload = {
-          deviceType: 'camera',
-          deviceName: detectedCamera.name,
-          deviceIcon: '📷',
-          cameraName: detectedCamera.name,
-          drivePath: detectedCamera.path,
-          description: `Kamera ${detectedCamera.name} terhubung via kabel USB Direct. Siap menerima jepretan live shutter!`,
-          timestamp: Date.now()
-        };
-        this.sendToRenderer('live-shutter:devicePluggedIn', payload);
-        this.sendToRenderer('live-shutter:cameraPluggedIn', payload);
-      } else if (wasCameraConnected && !isCameraNowConnected) {
-        this.log('WARN', `🔌 Kamera ${this.cableConfig.connectedCamera || ''} Terputus / Dilepas.`);
-        this.cableConfig.cameraDetails = null;
-        this.cableConfig.connectedCamera = null;
-
-        // If camera disconnected and SD card is present, switch notification to SD card
-        if (isSdCardNowConnected) {
-          this.log('INFO', `[LIVE SHUTTER] Berpindah ke SD Card: ${detectedSdCard.name}`);
           const payload = {
-            deviceType: 'sdcard',
-            deviceName: detectedSdCard.name,
-            deviceIcon: '💾',
-            cameraName: detectedSdCard.name,
-            driveLetter: detectedSdCard.driveLetter,
-            folderName: detectedSdCard.folderName,
-            drivePath: detectedSdCard.path,
-            description: `SD Card di Drive ${detectedSdCard.driveLetter}:\\ siap digunakan.`,
+            deviceType: 'camera',
+            deviceName: detectedCamera.name,
+            deviceIcon: '📷',
+            cameraName: detectedCamera.name,
+            drivePath: detectedCamera.path,
+            description: `Kamera ${detectedCamera.name} terhubung via kabel USB Direct. Siap menerima jepretan live shutter!`,
             timestamp: Date.now()
           };
           this.sendToRenderer('live-shutter:devicePluggedIn', payload);
           this.sendToRenderer('live-shutter:cameraPluggedIn', payload);
+        } else if (wasCameraConnected && !isCameraNowConnected) {
+          this.log('WARN', `🔌 Kamera ${this.cableConfig.connectedCamera || ''} Terputus / Dilepas.`);
+          this.cableConfig.cameraDetails = null;
+          this.cableConfig.connectedCamera = null;
+          this.cableConfig.detectedDrive = null;
+          this.cableConfig.activeDeviceType = null;
         }
       }
 
