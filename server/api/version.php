@@ -10,12 +10,12 @@ $defaultMac = 'https://ghazabegins.id/fotosync/downloads/FotoSync-Setup-Latest.d
 
 $versionInfo = [
     'success' => true,
-    'latest_version' => '1.2.0',
+    'latest_version' => '1.3.0',
     'min_required_version' => '1.0.0',
     'download_url' => $defaultWin,
     'windows_download_url' => $defaultWin,
     'mac_download_url' => $defaultMac,
-    'release_notes' => "• Pembaruan Live Shutter Connect: Auto-detect SD Card & Kabel USB Camera Direct (Windows & macOS)\n• Pop-up Modal Konfirmasi Otomatis saat SD Card / Kartu Memori Dicolokkan\n• Penyederhanaan Ingest Mode dan Perbaikan Filter IP Jaringan macOS",
+    'release_notes' => "• Pembaruan v1.3.0:\n• Pembedaan Sistem Lengkap: Kamera USB Direct (Live Shutter) vs SD Card Reader (Batch Ingest)\n• Otomatisasi Input Folder Target ke Dashboard & Antrean Upload\n• Integrasi Penuh macOS: Apple ImageCaptureCore Camera Bridge (Swift)\n• Otomatisasi Build CI/CD Multi-platform (Windows .exe & macOS .dmg)",
     'is_mandatory' => false,
     'released_at' => date('Y-m-d')
 ];
