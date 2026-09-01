@@ -165,8 +165,9 @@
 
 - (void)downloadFile:(ICCameraFile *)file fromCamera:(ICCameraDevice *)camera {
     NSString *filename = file.name ?: [NSString stringWithFormat:@"IMG_%ld.jpg", (long)[[NSDate date] timeIntervalSince1970]];
-    
-    // In ImageCaptureCore, dictionary keys can be NSString literals for 100% universal compatibility
+    NSString *camName = camera.name ?: @"Kamera USB";
+    NSString *finalDest = [self.destinationPath stringByAppendingPathComponent:filename];
+
     NSDictionary *options = @{
         @"ICDownloadsDirectoryURL": [NSURL fileURLWithPath:self.destinationPath],
         @"ICSaveAsFilename": filename,
@@ -176,30 +177,23 @@
     [camera requestDownloadFile:file
                         options:options
                downloadDelegate:self
-        didDownloadFileSelector:@selector(didDownloadFile:error:options:contextInfo:)
-                    contextInfo:NULL];
-}
-
-#pragma mark - Download Callback Selector
-
-- (void)didDownloadFile:(ICCameraFile *)file error:(NSError *)error options:(NSDictionary *)options contextInfo:(void *)contextInfo {
-    NSString *filename = file.name ?: @"photo.jpg";
-    NSString *finalPath = [self.destinationPath stringByAppendingPathComponent:filename];
-
-    if (error) {
-        [self sendJSON:@{
-            @"event": @"download_failed",
-            @"file": filename,
-            @"error": error.localizedDescription ?: @"Download error"
-        }];
-    } else {
-        [self sendJSON:@{
-            @"event": @"photo_downloaded",
-            @"file": filename,
-            @"path": finalPath,
-            @"camera": file.device.name ?: @"Kamera USB"
-        }];
-    }
+                     completion:^(NSError * _Nullable error, NSString * _Nullable savedPath) {
+        if (error) {
+            [self sendJSON:@{
+                @"event": @"download_failed",
+                @"file": filename,
+                @"error": error.localizedDescription ?: @"Download error"
+            }];
+        } else {
+            NSString *resultPath = (savedPath && savedPath.length > 0) ? savedPath : finalDest;
+            [self sendJSON:@{
+                @"event": @"photo_downloaded",
+                @"file": filename,
+                @"path": resultPath,
+                @"camera": camName
+            }];
+        }
+    }];
 }
 
 @end

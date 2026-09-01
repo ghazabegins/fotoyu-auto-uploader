@@ -52,24 +52,12 @@ jobs:
       - name: Compile Native Camera Bridge (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          echo "Compiling Universal Native Camera Bridge (arm64 + x86_64) for macOS..."
-          clang -O2 -fobjc-arc -arch arm64 -framework Foundation -framework ImageCaptureCore src/main/scripts/mac_camera_bridge.m -o src/main/scripts/mac_camera_bridge_arm64 || true
-          clang -O2 -fobjc-arc -arch x86_64 -framework Foundation -framework ImageCaptureCore src/main/scripts/mac_camera_bridge.m -o src/main/scripts/mac_camera_bridge_x64 || true
-          
-          if [ -f "src/main/scripts/mac_camera_bridge_arm64" ] && [ -f "src/main/scripts/mac_camera_bridge_x64" ]; then
-            lipo -create -output src/main/scripts/mac_camera_bridge src/main/scripts/mac_camera_bridge_arm64 src/main/scripts/mac_camera_bridge_x64
-            rm -f src/main/scripts/mac_camera_bridge_arm64 src/main/scripts/mac_camera_bridge_x64
-          elif [ -f "src/main/scripts/mac_camera_bridge_arm64" ]; then
-            mv src/main/scripts/mac_camera_bridge_arm64 src/main/scripts/mac_camera_bridge
-          elif [ -f "src/main/scripts/mac_camera_bridge_x64" ]; then
-            mv src/main/scripts/mac_camera_bridge_x64 src/main/scripts/mac_camera_bridge
-          else
-            clang -O2 -fobjc-arc -framework Foundation -framework ImageCaptureCore src/main/scripts/mac_camera_bridge.m -o src/main/scripts/mac_camera_bridge
-          fi
+          echo "Compiling Native Camera Bridge for macOS..."
+          xcrun clang -O2 -fobjc-arc -framework Foundation -framework ImageCaptureCore src/main/scripts/mac_camera_bridge.m -o src/main/scripts/mac_camera_bridge
           chmod +x src/main/scripts/mac_camera_bridge
           file src/main/scripts/mac_camera_bridge
           ls -la src/main/scripts/mac_camera_bridge
-          echo "Universal Native camera bridge compiled successfully!"
+          echo "Native camera bridge compiled successfully!"
 
       - name: Compile & Package Application
         env:
