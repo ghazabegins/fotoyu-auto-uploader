@@ -948,18 +948,28 @@ class LiveShutterEngine {
       fs.mkdirSync(targetDir, { recursive: true });
     }
 
+    let binaryPath = path.join(__dirname, 'scripts', 'mac_camera_bridge');
+    if (binaryPath.includes('app.asar')) {
+      binaryPath = binaryPath.replace('app.asar', 'app.asar.unpacked');
+    }
+
     let scriptPath = path.join(__dirname, 'scripts', 'mac_camera_bridge.swift');
     if (scriptPath.includes('app.asar')) {
       scriptPath = scriptPath.replace('app.asar', 'app.asar.unpacked');
     }
-    if (!fs.existsSync(scriptPath)) {
-      this.log('WARN', `[macOS Bridge] Swift script not found at ${scriptPath}`);
-      return;
-    }
 
     try {
-      this.macBridgeProcess = spawn('/usr/bin/swift', [scriptPath, targetDir]);
-      this.log('INFO', `🍏 [macOS] Apple ImageCaptureCore Camera Bridge aktif.`);
+      if (fs.existsSync(binaryPath)) {
+        try { fs.chmodSync(binaryPath, 0o755); } catch (e) {}
+        this.macBridgeProcess = spawn(binaryPath, [targetDir]);
+        this.log('INFO', `🍏 [macOS] Apple ImageCaptureCore Camera Bridge aktif (Native Binary).`);
+      } else if (fs.existsSync(scriptPath)) {
+        this.macBridgeProcess = spawn('/usr/bin/swift', [scriptPath, targetDir]);
+        this.log('INFO', `🍏 [macOS] Apple ImageCaptureCore Camera Bridge aktif (Swift Interpreter).`);
+      } else {
+        this.log('WARN', `[macOS Bridge] File bridge kamera tidak ditemukan di ${scriptPath}`);
+        return;
+      }
 
       let buffer = '';
       this.macBridgeProcess.stdout.on('data', (data) => {

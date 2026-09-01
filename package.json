@@ -64,6 +64,13 @@
       "hardenedRuntime": false,
       "gatekeeperAssess": false,
       "identity": null,
+      "extendInfo": {
+        "NSCameraUsageDescription": "FotoSync PRO memerlukan izin akses kamera USB untuk Live Shutter Ingest.",
+        "NSAppleEventsUsageDescription": "FotoSync PRO memerlukan izin integrasi sistem untuk deteksi kamera.",
+        "NSDesktopFolderUsageDescription": "FotoSync PRO memerlukan akses folder untuk menyimpan foto Live Shutter.",
+        "NSDocumentsFolderUsageDescription": "FotoSync PRO memerlukan akses folder untuk menyimpan foto Live Shutter.",
+        "NSDownloadsFolderUsageDescription": "FotoSync PRO memerlukan akses folder untuk menyimpan foto Live Shutter."
+      },
       "target": [
         {
           "target": "dmg",
